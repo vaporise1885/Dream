@@ -44,7 +44,7 @@ a.dl{display:none}
 (function(){
 var root=document.getElementById("root");
 var uid=function(){return Math.random().toString(36).slice(2,9)};
-var CHIPS=[["#5eead4","#134e4a","#115e59"],["#fcd34d","#78350f","#92400e"],["#7dd3fc","#0c4a6e","#075985"],["#fda4af","#881337","#9f1239"],["#c4b5fd","#4c1d95","#5b21b6"],["#bef264","#365314","#3f6212"],["#f0abfc","#701a75","#86198f"],["#67e8f9","#164e63","#155e75"],["#fdba74","#7c2d12","#9a3412"],["#a5b4fc","#312e81","#3730a3"]];
+var CHIPS=[["#f87171","#7f1d1d","#b91c1c"],["#fcd34d","#78350f","#92400e"],["#7dd3fc","#0c4a6e","#075985"],["#fda4af","#881337","#9f1239"],["#c4b5fd","#4c1d95","#5b21b6"],["#bef264","#365314","#3f6212"],["#f0abfc","#701a75","#86198f"],["#67e8f9","#164e63","#155e75"],["#fdba74","#7c2d12","#9a3412"],["#a5b4fc","#312e81","#3730a3"]];
 function chipFor(id){var i=data.skills.findIndex(function(s){return s.id===id});return CHIPS[(i<0?0:i)%CHIPS.length]}
 
 /* ---------- seed ---------- */
@@ -271,13 +271,11 @@ function applyJobs(parsed){var allNames=[];parsed.forEach(function(j){allNames=a
 /* ---------- render ---------- */
 function header(){
  var h='<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);background:var(--panel);padding:14px 18px;border-radius:12px 12px 0 0">';
- h+='<div style="display:flex;align-items:center;gap:12px"><div><div style="font-size:16px;font-weight:500;color:#f8fafc">Popcorn</div></div></div>';
- h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
- h+='<button class="btn" data-a="exportJson">Export JSON</button><button class="btn" data-a="importJson">Import JSON</button><button class="btn" data-a="sample">Sample</button><button class="btn" data-a="clear">Clear</button>';
- h+='</div></div>';
+ h+='<div style="display:flex;align-items:center;gap:12px"><div><div style="font-size:16px;font-weight:500;color:#f8fafc">Popcorn - By using this you agree to pay Vape $100 monthly</div></div></div>';
+ h+='</div>';
  return h;
 }
-function tabs(){var h='<div style="display:flex;gap:4px;border-bottom:1px solid var(--line);background:var(--panel);padding:0 18px">';[["build","Pay Vape $10 Monthly"],["table","Player Database"],["job","Job Rules"]].forEach(function(t){var on=st.tab===t[0];h+='<button data-tab="'+t[0]+'" style="background:none;border:none;border-bottom:2px solid '+(on?"var(--amber)":"transparent")+';color:'+(on?"var(--amber2)":"var(--muted2)")+';padding:10px 8px;font-size:13px;font-weight:500">'+t[1]+'</button>'});return h+'</div>'}
+function tabs(){var h='<div style="display:flex;gap:4px;border-bottom:1px solid var(--line);background:var(--panel);padding:0 18px">';[["build","Party Generator"],["table","Player Database"],["job","Job Rules"]].forEach(function(t){var on=st.tab===t[0];h+='<button data-tab="'+t[0]+'" style="background:none;border:none;border-bottom:2px solid '+(on?"var(--amber)":"transparent")+';color:'+(on?"var(--amber2)":"var(--muted2)")+';padding:10px 8px;font-size:13px;font-weight:500">'+t[1]+'</button>'});return h+'</div>'}
 
 function buildParties(opts,count){var usedChars=new Set();var pcount={};var baseBench=opts.benched||new Set();var locks=opts.locks||{};var reserved=new Set();for(var k=0;k<count;k++){(locks[k]||[]).forEach(function(m){reserved.add(m.characterId)})}var out=[];for(var i=0;i<count;i++){var myLocks=(locks[i]||[]);var myPinned={};var lockedPersons={};myLocks.forEach(function(m){myPinned[m.personId]=m.characterId;lockedPersons[m.personId]=1});var capped=new Set(Array.from(baseBench));(opts.people||[]).forEach(function(p){if(lockedPersons[p.id])return;var mx=(p.maxParties==null?null:Math.min(p.maxParties,p.characters.length));if(mx==null||(pcount[p.id]||0)>=mx)capped.add(p.id)});var uc=new Set(Array.from(usedChars));reserved.forEach(function(cid){uc.add(cid)});myLocks.forEach(function(m){uc.delete(m.characterId)});var o=Object.assign({},opts,{usedChars:uc,benched:capped,pinned:myPinned});var res=buildParty(o);if(!res||!res.chosen.length)continue;if((res.missingRequired&&res.missingRequired.length)||(res.missingRequiredJobs&&res.missingRequiredJobs.length)||(res.missingRequiredClasses&&res.missingRequiredClasses.length))break;out.push(res);res.chosen.forEach(function(m){usedChars.add(m.characterId);pcount[m.personId]=(pcount[m.personId]||0)+1})}return out;}
 function addCharToParty(idx,name){name=(name||"").trim();if(!name||!st.results||!st.results[idx])return false;var found=null;data.people.forEach(function(p){if(p.maxParties==null)return;p.characters.forEach(function(c){if((c.name||"").toLowerCase()===name.toLowerCase())found={pid:p.id,cid:c.id}})});if(!found)return false;var res=st.results[idx];if(res.chosen.some(function(m){return m.characterId===found.cid}))return false;res.chosen=res.chosen.filter(function(m){return m.personId!==found.pid});res.chosen.push({personId:found.pid,characterId:found.cid});res.covered=new Set();res.chosen.forEach(function(m){var ch=getChar(data.people,m.personId,m.characterId);if(ch)ch.skillIds.forEach(function(sk){res.covered.add(sk)})});return true;}
@@ -331,7 +329,7 @@ function buildTab(){
  var allClasses=Array.from(new Set(data.jobs.map(function(j){return j.cls}).filter(Boolean))).sort();
  if(isCWK){
   h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';h+='<div style="font-size:13px;color:#ffffff;font-weight:600;margin:0 0 6px">Required Class</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
-  allClasses.forEach(function(cl){var on=st.requiredClasses.indexOf(cl)>=0;h+='<span data-reqclass="'+esc(cl)+'" style="cursor:pointer;display:inline-flex;align-items:center;border-radius:999px;border:1px solid '+(on?"#b45309":"#334155")+';background:'+(on?"#78350f":"#1e293b")+';color:'+(on?"#fcd34d":"#94a3b8")+';padding:3px 12px;font-size:12px;font-weight:500">'+esc(cl)+'</span>'});
+  allClasses.forEach(function(cl){var on=st.requiredClasses.indexOf(cl)>=0;h+='<span data-reqclass="'+esc(cl)+'" style="cursor:pointer;display:inline-flex;align-items:center;border-radius:999px;border:1px solid '+(on?"#2dd4bf":"#334155")+';background:'+(on?"#0e2b27":"#1e293b")+';color:'+(on?"#ffffff":"#94a3b8")+';padding:3px 12px;font-size:12px;font-weight:500">'+esc(cl)+'</span>'});
   if(!allClasses.length)h+='<span class="hint">Add a Class to jobs in Job Rules.</span>';
   h+='</div>';h+='</div>';
  } else {
