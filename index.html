@@ -26,6 +26,7 @@ input[type=range]{-webkit-appearance:none;appearance:none;height:8px;border-radi
 table{width:100%;border-collapse:collapse}
 th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line);padding:6px}
 td{padding:5px 6px;vertical-align:top}
+table.rowlines tbody td{border-bottom:1px solid var(--line2)}
 .lbl{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2)}
 .hint{font-size:11px;color:var(--muted)}
 a.dl{display:none}
@@ -374,7 +375,7 @@ function buildTab(){
 function rosterTable(){
  var rows=[];data.people.forEach(function(p){p.characters.forEach(function(c){rows.push({p:p,c:c})})});
  var h='<div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><div class="lbl" style="font-weight:700;color:#fff">Player Database</div><div class="hint">Google Sheet for <a href="https://docs.google.com/spreadsheets/d/1ZHdzvwW88_cqxtqAvN5J1T-5wB02N58GPbVC95KxlM0/edit?gid=0#gid=0" target="_blank" rel="noreferrer" style="color:var(--amber2);text-decoration:underline">Player Database</a></div></div><div style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn btn-amber" data-a="syncSheet">Sync from Google Sheet</button></div></div>';
- h+='<div style="overflow-x:auto"><table style="min-width:720px"><thead><tr><th style="width:44px;color:#fff">Done</th><th style="color:#fff">Person</th><th style="color:#fff">Character</th><th style="color:#fff">Priority</th><th style="color:#fff">Job</th><th style="color:#fff">Class</th><th style="color:#fff">Skills</th><th style="color:#fff">Boss Availability</th></tr></thead><tbody>';
+ h+='<div style="overflow-x:auto"><table class="rowlines" style="min-width:720px"><thead><tr><th style="width:44px;color:#fff">Done</th><th style="color:#fff">Person</th><th style="color:#fff">Character</th><th style="color:#fff">Priority</th><th style="color:#fff">Job</th><th style="color:#fff">Class</th><th style="color:#fff">Skills</th><th style="color:#fff">Boss Availability</th></tr></thead><tbody>';
  if(!rows.length)h+='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No characters yet — click Sync from Google Sheet.</td></tr>';
  rows.forEach(function(r){var p=r.p,c=r.c;var ro=c.jobId?' readonly title="Set by the job — edit it in Job rules"':'';var rs=c.jobId?'opacity:.55;cursor:not-allowed':'';
   h+='<tr style="'+(c.done?"opacity:.5":"")+'">';
@@ -401,7 +402,7 @@ function jobFieldAddName(jid,field,name){name=(name||"").trim();if(!name)return;
 function jobFieldRemove(jid,field,sid){var j=jobById[jid];if(!j)return;j[field]=(j[field]||[]).filter(function(x){return x!==sid});data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c[field]=j[field].slice()})});reindex();save()}
 function jobsTable(){
  var h='<div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><div class="lbl" style="font-weight:700;color:#fff">Job rules</div><div class="hint">Google Sheet for <a href="https://docs.google.com/spreadsheets/d/1ZHdzvwW88_cqxtqAvN5J1T-5wB02N58GPbVC95KxlM0/edit?gid=1577715758#gid=1577715758" target="_blank" rel="noreferrer" style="color:var(--amber2);text-decoration:underline">Job Rules</a></div></div><div style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn btn-amber" data-a="syncJobs">Sync from Google Sheet</button></div></div>';
- h+='<div style="overflow-x:auto"><table style="min-width:820px"><thead><tr><th>Job</th><th>Class</th><th>Job Skills</th><th>Needs</th><th>Good to have</th></tr></thead><tbody>';
+ h+='<div style="overflow-x:auto"><table class="rowlines" style="min-width:820px"><thead><tr><th style="color:#fff">Job</th><th style="color:#fff">Class</th><th style="color:#fff">Job Skills</th><th style="color:#fff">Needs</th><th style="color:#fff">Good to have</th></tr></thead><tbody>';
  if(!data.jobs.length)h+='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No jobs yet — click Sync from Google Sheet.</td></tr>';
  data.jobs.forEach(function(j){
   h+='<tr><td style="font-weight:600;color:#f1f5f9;white-space:nowrap">'+esc(j.name)+'</td>';
