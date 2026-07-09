@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Popcorn</title>
+<style>
+:root{--bg:#020617;--panel:#0f172a;--line:#1e293b;--line2:#334155;--txt:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;--amber:#f59e0b;--amber2:#fcd34d}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:ui-sans-serif,system-ui,-apple-system,sans-serif}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+input[type=range]{-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;background:#1e293b;border:1px solid #2dd4bf;outline:none;cursor:pointer}input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:999px;background:transparent}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:#2dd4bf;border:2px solid #2dd4bf;margin-top:-5px;cursor:pointer}input[type=range]::-moz-range-track{height:8px;border-radius:999px;background:#1e293b}input[type=range]::-moz-range-progress{height:8px;border-radius:999px;background:#0e2b27}input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#2dd4bf;border:2px solid #2dd4bf;cursor:pointer}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.wrap{max-width:100%;margin:0 auto;padding:0 16px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:transparent;color:#cbd5e1;border-radius:6px;padding:6px 10px;font-size:12px}
+.btn:hover{background:#1e293b}
+.btn-amber{background:var(--amber);border:none;color:#0f172a;font-weight:500}
+.btn-amber:hover{background:#fbbf24}
+.cell{background:var(--bg);border:1px solid var(--line2);border-radius:6px;color:#f1f5f9;padding:6px 8px;font-size:13px;width:100%}
+.prioChk{appearance:none;-webkit-appearance:none;width:16px;height:16px;border:1.5px solid #334155;border-radius:3px;background:transparent;cursor:pointer;position:relative;flex:none;margin:0}
+.prioChk:checked{border-color:#2dd4bf;background:#0e2b27}
+.prioChk:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #2dd4bf;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.cell:focus{outline:none;border-color:#b45309}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:14px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line);padding:6px}
+td{padding:5px 6px;vertical-align:top}
+.lbl{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2)}
+.hint{font-size:11px;color:var(--muted)}
+a.dl{display:none}
+</style>
+</head>
+<body>
+<div id="root" class="wrap"></div>
+<a id="dl" class="dl"></a>
+<input id="fileCsv" type="file" accept=".csv,text/csv,text/plain" style="display:none"/>
+<input id="fileJobsCsv" type="file" accept=".csv,text/csv,text/plain" style="display:none"/>
+<input id="fileSkillsCsv" type="file" accept=".csv,text/csv,text/plain" style="display:none"/>
+<input id="fileJson" type="file" accept="application/json,.json" style="display:none"/>
+<script>
+(function(){
+var root=document.getElementById("root");
+var uid=function(){return Math.random().toString(36).slice(2,9)};
+var CHIPS=[["#5eead4","#134e4a","#115e59"],["#fcd34d","#78350f","#92400e"],["#7dd3fc","#0c4a6e","#075985"],["#fda4af","#881337","#9f1239"],["#c4b5fd","#4c1d95","#5b21b6"],["#bef264","#365314","#3f6212"],["#f0abfc","#701a75","#86198f"],["#67e8f9","#164e63","#155e75"],["#fdba74","#7c2d12","#9a3412"],["#a5b4fc","#312e81","#3730a3"]];
+function chipFor(id){var i=data.skills.findIndex(function(s){return s.id===id});return CHIPS[(i<0?0:i)%CHIPS.length]}
+
+/* ---------- seed ---------- */
+function seedData(){
+ var jobDefs=[
+  ["Hero",[],["SI"],["SE","EC"],"Warrior"],
+  ["Dark Knight",["HB","Dispel"],["SI"],["SE","EC"],"Warrior"],
+  ["Paladin",[],["SI"],["SE","EC"],"Warrior"],
+  ["Bishop",["HS","Dispel"],[],["TH","SE"],"Magician"],
+  ["Mage FP",[],[],["TH","SE"],"Magician"],
+  ["Mage IL",[],[],["TH","SE"],"Magician"],
+  ["Night Lord",["MU"],["SE"],[],"Thief"],
+  ["Shadower",[],[],["SE"],"Thief"],
+  ["Bowmaster",["SE"],[],[],"Bowman"],
+  ["Marksman",["SE"],["SI"],[],"Bowman"],
+  ["Buccaneer",["SI"],[],["SE"],"Pirate"],
+  ["Corsair",[],["SI"],["SE"],"Pirate"],
+  ["Dual Blade",["TH"],[],[],"Thief"],
+  ["Evan",[],["SE"],[],"Magician"],
+  ["Wind Archer",["SE"],["SI"],[],"Bowman"],
+  ["Dawn Warrior",[],[],["SE"],"Warrior"],
+  ["Night Walker",[],["SE"],[],"Thief"],
+  ["Thunderbreaker",["SI"],[],["SE"],"Pirate"],
+  ["Blaze Wizard",[],[],["TH"],"Magician"],
+  ["Aran",[],["SE"],["SI"],"Warrior"]
+ ];
+ var order=["Dispel","SI","TH","SE","HS","HB","EC","MU"];
+ var skills=order.map(function(n){return{id:uid(),name:n}});
+ var sid={};skills.forEach(function(s){sid[s.name]=s.id});
+ var toIds=function(a){return a.map(function(n){return sid[n]})};
+ var jobs=jobDefs.map(function(d){return{id:uid(),name:d[0],skillIds:toIds(d[1]),needIds:toIds(d[2]),goodIds:toIds(d[3]),cls:d[4]||""}});
+ return{skills:skills,people:[],jobs:jobs};
+}
+
+/* ---------- CSV ---------- */
+function csvParse(text){
+ text=text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+ var first=text.split("\n")[0]||"";
+ var delim=first.indexOf("\t")>=0?"\t":",";
+ var rows=[],row=[],cur="",i=0,q=false;
+ while(i<text.length){var ch=text[i];
+  if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i+=2;continue}q=false;i++;continue}cur+=ch;i++;continue}
+  if(ch==='"'){q=true;i++;continue}
+  if(ch===delim){row.push(cur);cur="";i++;continue}
+  if(ch==="\n"){row.push(cur);rows.push(row);row=[];cur="";i++;continue}
+  cur+=ch;i++}
+ row.push(cur);rows.push(row);
+ return rows.filter(function(r){return r.some(function(c){return(c||"").trim()!==""})});
+}
+function csvCell(v){v=(v==null?"":String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function csvUnparse(rows){return rows.map(function(r){return r.map(csvCell).join(",")}).join("\n")}
+
+/* ---------- sheet import ---------- */
+function norm(x){return x==null?"":String(x).trim()}
+function splitList(s){return norm(s).split(/[,;|\/]+/).map(function(x){return x.trim()}).filter(Boolean)}
+function parseSheet(text){
+ var rows=csvParse(text||"");if(!rows.length)return null;
+ var header=rows[0].map(function(h){return norm(h).toLowerCase()});
+ var find=function(names){return header.findIndex(function(h){return names.indexOf(h)>=0})};
+ var pC=find(["person","player","owner","user","account"]),cC=find(["character","char","unit","hero","build"]),jC=find(["job","jobs","class","classes","profession"]),sC=find(["skills","skill","roles","role","tags","provides"]),nC=find(["needs","need","requires","requirement","requirements","depends","dependencies","relies"]);
+ var has=pC!==-1||cC!==-1||sC!==-1||nC!==-1||jC!==-1;
+ if(!has){pC=0;cC=1;jC=2;sC=3;nC=4}else{if(pC===-1)pC=0;if(cC===-1)cC=1;if(sC===-1)sC=2;rows=rows.slice(1)}
+ var skillOrder=[],skillId={};
+ var ensureSkill=function(name){var k=name.toLowerCase();if(!skillId[k]){var id=uid();skillId[k]=id;skillOrder.push({id:id,name:name})}return skillId[k]};
+ var pMap={},pOrder=[],jMap={};
+ var ensureJob=function(name,sids){var k=name.toLowerCase();if(!jMap[k])jMap[k]={id:uid(),name:name,skillIds:{}};var j=jMap[k];sids.forEach(function(s){j.skillIds[s]=1});return j.id};
+ rows.forEach(function(r){
+  var person=norm(r[pC]);if(!person)return;
+  var character=norm(r[cC])||"Character";
+  var jobName=jC!==-1&&jC<r.length?norm(r[jC]):"";
+  var sids=[];splitList(r[sC]).forEach(function(n){var id=ensureSkill(n);if(sids.indexOf(id)<0)sids.push(id)});
+  var nids=[];if(nC!==-1&&nC<r.length)splitList(r[nC]).forEach(function(n){var id=ensureSkill(n);if(nids.indexOf(id)<0)nids.push(id)});
+  var jobId=jobName?ensureJob(jobName,sids):null;
+  if(!pMap[person]){pMap[person]={id:uid(),name:person,characters:[]};pOrder.push(person)}
+  pMap[person].characters.push({id:uid(),name:character,jobId:jobId,skillIds:sids,needIds:nids});
+ });
+ var jobs=Object.keys(jMap).map(function(k){return{id:jMap[k].id,name:jMap[k].name,skillIds:Object.keys(jMap[k].skillIds)}});
+ var people=pOrder.map(function(n){return pMap[n]});
+ if(!people.length)return null;
+ return{skills:skillOrder,people:people,jobs:jobs};
+}
+function parseJobsSheet(text){
+ var rows=csvParse(text||"");if(!rows.length)return null;
+ var header=rows[0].map(function(h){return norm(h).toLowerCase()});
+ var find=function(names){return header.findIndex(function(h){return names.indexOf(h)>=0})};
+ var jC=find(["job","jobs","class","classes","profession"]),sC=find(["skills","skill","roles","role","grants","provides"]),nC=find(["needs","need","requires","requirement","requirements","depends","dependencies","relies"]);
+ var has=jC!==-1||sC!==-1||nC!==-1;if(!has){jC=0;sC=1;nC=2}else{if(jC===-1)jC=0;if(sC===-1)sC=1;rows=rows.slice(1)}
+ var out=[];rows.forEach(function(r){var name=norm(r[jC]);if(!name)return;out.push({name:name,skillNames:sC<r.length?splitList(r[sC]):[],needNames:nC!==-1&&nC<r.length?splitList(r[nC]):[]})});
+ return out.length?out:null;
+}
+
+/* ---------- optimizer ---------- */
+function getChar(people,pid,cid){var p=people.find(function(x){return x.id===pid});return p?p.characters.find(function(c){return c.id===cid}):null}
+function pickBestChar(person,covered,rs,mode,usedChars){usedChars=usedChars||new Set();var best=null,bk=-1;person.characters.forEach(function(c){if(usedChars.has(c.id)||c.done)return;var rg=Array.from(rs).filter(function(s){return c.skillIds.indexOf(s)>=0&&!covered.has(s)}).length;var cg=c.skillIds.filter(function(s){return!covered.has(s)}).length;var k=(mode==="required"?rg*100:0)+cg;if(k>bk){bk=k;best=c}});return best?best.id:null}
+function buildParty(o){
+ var people=o.people,size=o.size,mode=o.mode,requiredIds=o.requiredIds,requiredJobIds=o.requiredJobIds||[],requiredClasses=o.requiredClasses||[],pinned=o.pinned,benched=o.benched,usedChars=o.usedChars||new Set();
+ var rs=new Set(mode==="required"?requiredIds:[]);var rj=new Set(requiredJobIds);var rc=new Set(requiredClasses.map(function(x){return(x||"").toLowerCase()}));var classOf=function(c){return(c.jobId&&jobById[c.jobId]&&jobById[c.jobId].cls)?jobById[c.jobId].cls.toLowerCase():"";};var ignorePrio=o.ignorePrio===true;var prioVal=function(c){return ignorePrio?0:(4-(c.priority==null?3:c.priority));};var relevant=new Set();if(mode==="required"){requiredIds.forEach(function(s){relevant.add(s)});people.forEach(function(p){p.characters.forEach(function(c){(c.needIds||[]).forEach(function(s){relevant.add(s)});(c.goodIds||[]).forEach(function(s){relevant.add(s)})})})}var isRel=function(s){return mode!=="required"||relevant.has(s)};
+ var avail=people.filter(function(p){return!benched.has(p.id)&&p.characters.some(function(c){return!usedChars.has(c.id)&&!c.done})});
+ var cands=[];
+ for(var r=0;r<80;r++){
+  var chosen=[],used=new Set(),covered=new Set(),covJobs=new Set(),covClasses=new Set();
+  var add=function(pid,cid){chosen.push({personId:pid,characterId:cid});used.add(pid);var ch=getChar(people,pid,cid);if(ch){ch.skillIds.forEach(function(s){covered.add(s)});if(ch.jobId)covJobs.add(ch.jobId);var _cl=classOf(ch);if(_cl)covClasses.add(_cl)}};
+  Object.keys(pinned).forEach(function(pid){if(chosen.length>=size)return;if(benched.has(pid)||used.has(pid))return;var person=people.find(function(p){return p.id===pid});if(!person||!person.characters.length)return;var cid=pinned[pid];if(!cid||usedChars.has(cid)||!person.characters.find(function(c){return c.id===cid}))cid=pickBestChar(person,covered,rs,mode,usedChars);if(cid)add(pid,cid)});
+  var cand=function(){return avail.filter(function(p){return!used.has(p.id)})};
+  if(!chosen.length&&r>0){var sp0=cand();if(sp0.length){var sp=sp0[Math.floor(Math.random()*sp0.length)];var scs=sp.characters.filter(function(c){return!usedChars.has(c.id)&&!c.done});if(scs.length)add(sp.id,scs[Math.floor(Math.random()*scs.length)].id)}}
+  while(chosen.length<size){var us=Array.from(rs).filter(function(s){return!covered.has(s)});var uj=Array.from(rj).filter(function(j){return!covJobs.has(j)});var uc=Array.from(rc).filter(function(x){return!covClasses.has(x)});if(!us.length&&!uj.length&&!uc.length)break;var bg=0,ties=[];cand().forEach(function(p){p.characters.forEach(function(c){if(usedChars.has(c.id)||c.done)return;var sg=c.skillIds.filter(function(s){return rs.has(s)&&!covered.has(s)}).length;var jg=c.jobId&&rj.has(c.jobId)&&!covJobs.has(c.jobId)?1:0;var _cc=classOf(c);var kg=(_cc&&rc.has(_cc)&&!covClasses.has(_cc))?1:0;var g=sg+jg+kg;if(g>bg){bg=g;ties=[{p:p,c:c}]}else if(g===bg&&g>0)ties.push({p:p,c:c})})});if(bg<=0||!ties.length)break;var _bp=-1,_pts=[];ties.forEach(function(t){var _pv=prioVal(t.c);if(_pv>_bp){_bp=_pv;_pts=[t]}else if(_pv===_bp)_pts.push(t)});var pk=_pts[Math.floor(Math.random()*_pts.length)];add(pk.p.id,pk.c.id)}
+  while(chosen.length<size){var cc=cand();if(!cc.length)break;var curChars=chosen.map(function(m){return getChar(people,m.personId,m.characterId)}).filter(Boolean);var um=curChars.filter(function(ch){return(ch.needIds||[]).some(function(s){return!covered.has(s)})});var neededNow=new Set();curChars.forEach(function(ch){(ch.needIds||[]).forEach(function(s){if(!covered.has(s))neededNow.add(s)})});var _prel={};rs.forEach(function(s){_prel[s]=1});curChars.forEach(function(ch){(ch.needIds||[]).forEach(function(s){_prel[s]=1});(ch.goodIds||[]).forEach(function(s){_prel[s]=1})});var _pr=function(s){return mode!=="required"||_prel[s]};var bs=-1e9,t2=[];cc.forEach(function(p){p.characters.forEach(function(c){if(usedChars.has(c.id)||c.done)return;var prov=c.skillIds;var cg=prov.filter(function(s){return!covered.has(s)&&_pr(s)}).length;var nc=prov.filter(function(s){return neededNow.has(s)}).length;var provRel=prov.filter(_pr).length;var dh=um.filter(function(m){return(m.needIds||[]).every(function(s){return covered.has(s)||prov.indexOf(s)>=0})}).length;var so=(c.needIds||[]).every(function(s){return covered.has(s)||prov.indexOf(s)>=0})?1:0;var _hnm=((c.needIds||[]).length&&so)?1:0;var sc=nc*12+dh*5+so*3+_hnm*4+cg+provRel*0.4+prioVal(c)*3+Math.random()*3;if(sc>bs){bs=sc;t2=[{p:p,c:c}]}else if(sc===bs)t2.push({p:p,c:c})})});var pk2=t2[Math.floor(Math.random()*t2.length)];add(pk2.p.id,pk2.c.id)}
+  (function(){var changed=true;while(changed){changed=false;var cov=new Set();chosen.forEach(function(m){var ch=getChar(people,m.personId,m.characterId);if(ch)ch.skillIds.forEach(function(s){cov.add(s)})});for(var qi=0;qi<chosen.length;qi++){var ch=getChar(people,chosen[qi].personId,chosen[qi].characterId);if(ch&&(ch.needIds||[]).some(function(s){return!cov.has(s)})&&!(pinned&&pinned[chosen[qi].personId]===chosen[qi].characterId)){chosen.splice(qi,1);changed=true;break;}}}})();
+  covered=new Set();covJobs=new Set();covClasses=new Set();chosen.forEach(function(m){var ch=getChar(people,m.personId,m.characterId);if(ch){ch.skillIds.forEach(function(s){covered.add(s)});if(ch.jobId)covJobs.add(ch.jobId);var _cl=classOf(ch);if(_cl)covClasses.add(_cl)}});
+  var reqCov=Array.from(rs).filter(function(s){return covered.has(s)}).length;
+  var reqJ=Array.from(rj).filter(function(j){return covJobs.has(j)}).length;
+  var reqK=Array.from(rc).filter(function(x){return covClasses.has(x)}).length;
+  var chars=chosen.map(function(m){return getChar(people,m.personId,m.characterId)}).filter(Boolean);
+  var deps=chars.filter(function(ch){return(ch.needIds||[]).every(function(s){return covered.has(s)})}).length;
+  var unmetNeed=0;chars.forEach(function(ch){(ch.needIds||[]).forEach(function(s){if(!covered.has(s))unmetNeed++})});
+  var goodSet={};chars.forEach(function(ch){(ch.goodIds||[]).forEach(function(s){goodSet[s]=1})});var goodCov=Object.keys(goodSet).filter(function(s){return covered.has(s)}).length;
+  var prioSum=0;chars.forEach(function(ch){prioSum+=prioVal(ch)});
+  var _needSet={};chars.forEach(function(ch){(ch.needIds||[]).forEach(function(s){_needSet[s]=1})});var _relP={};rs.forEach(function(s){_relP[s]=1});Object.keys(_needSet).forEach(function(s){_relP[s]=1});Object.keys(goodSet).forEach(function(s){_relP[s]=1});var relCov=0;covered.forEach(function(s){if(mode!=="required"||_relP[s])relCov++});var _pc={};chars.forEach(function(ch){var _sn={};ch.skillIds.forEach(function(s){if(_needSet[s]&&!_sn[s]){_sn[s]=1;_pc[s]=(_pc[s]||0)+1}})});var _redun=0;Object.keys(_pc).forEach(function(s){if(_pc[s]>1)_redun+=_pc[s]-1});var _needMet=0;chars.forEach(function(ch){if((ch.needIds||[]).length&&(ch.needIds||[]).every(function(s){return covered.has(s)}))_needMet++});var _hard=deps*100000-unmetNeed*10000+reqCov*1000+reqJ*1000+reqK*1000+prioSum*30;var _soft=goodCov*20+relCov*10-_redun*40+_needMet*25+chosen.length;var score=_hard+_soft;
+  cands.push({chosen:chosen,covered:new Set(covered),coveredJobs:new Set(covJobs),coveredClasses:new Set(covClasses),score:score,hard:_hard,soft:_soft,unmetNeed:unmetNeed});
+ }
+ if(!cands.length)return null;var _mh=cands[0].hard;cands.forEach(function(c){if(c.hard>_mh)_mh=c.hard});var _ph=cands.filter(function(c){return c.hard>=_mh-15});var _ms=_ph[0].soft;_ph.forEach(function(c){if(c.soft>_ms)_ms=c.soft});var _pool=_ph.filter(function(c){return c.soft>=_ms-60});var best=_pool[Math.floor(Math.random()*_pool.length)];
+ var missing=mode==="required"?requiredIds.filter(function(s){return!best.covered.has(s)}):[];
+ var missingJ=requiredJobIds.filter(function(j){return!best.coveredJobs.has(j)});
+ var missingC=requiredClasses.filter(function(x){return!best.coveredClasses.has((x||"").toLowerCase())});
+ best.missingRequired=missing;best.missingRequiredJobs=missingJ;best.missingRequiredClasses=missingC;return best;
+}
+
+/* ---------- state ---------- */
+var data,skillById,jobById;
+var st={tab:"build",size:6,count:5,mode:"required",bossRun:"",resultsBoss:"",required:[],requiredJobs:[],requiredClasses:[],benched:new Set(),locks:{},completed:{},prio:{1:true,2:true,3:true,none:false},results:null};
+function reindex(){skillById={};data.skills.forEach(function(s){skillById[s.id]=s});jobById={};data.jobs.forEach(function(j){jobById[j.id]=j});(data.people||[]).forEach(function(p){p.characters.forEach(function(c){var base=(c.jobId&&jobById[c.jobId]?(jobById[c.jobId].skillIds||[]):[]);var out=base.slice();(c.extraSkillIds||[]).forEach(function(id){if(out.indexOf(id)<0)out.push(id)});c.skillIds=out})})}
+function skillsCell(p,c){var base=(c.jobId&&jobById[c.jobId]?(jobById[c.jobId].skillIds||[]):[]);var bset={};base.forEach(function(id){bset[id]=1});var eff=c.skillIds||[];var h='<td><div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1px solid #334155;background:#020617;border-radius:6px;padding:5px 6px;min-width:150px;min-height:34px">';eff.forEach(function(sid){var sk=skillById[sid];if(!sk)return;var cc=chipFor(sid);var isJob=bset[sid];h+='<span title="'+(isJob?"From job rule":"Added skill")+'" style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;border:1px solid '+cc[2]+';background:'+cc[1]+';color:'+cc[0]+';padding:2px 8px;font-size:12px">'+esc(sk.name);if(!isJob)h+='<span data-cskillrem="'+p.id+'|'+c.id+'|'+sid+'" style="cursor:pointer;color:#94a3b8;font-size:13px">&times;</span>';h+='</span>'});h+='<input class="cskilladd" data-p="'+p.id+'" data-c="'+c.id+'" list="skilllist" placeholder="+ add" style="background:transparent;border:none;outline:none;color:#f1f5f9;font-size:12px;padding:2px;width:66px"/>';h+='</div></td>';return h}
+function addCharSkill(pid,cid,name){name=(name||"").trim();if(!name)return;var sid=ensureSkills([name])[0];var c=getChar(data.people,pid,cid);if(!c)return;var base=(c.jobId&&jobById[c.jobId]?(jobById[c.jobId].skillIds||[]):[]);c.extraSkillIds=c.extraSkillIds||[];if(base.indexOf(sid)<0&&c.extraSkillIds.indexOf(sid)<0)c.extraSkillIds.push(sid);reindex();save()}
+function removeCharSkill(pid,cid,sid){var c=getChar(data.people,pid,cid);if(!c)return;c.extraSkillIds=(c.extraSkillIds||[]).filter(function(x){return x!==sid});reindex();save()}
+function save(){try{localStorage.setItem("rpp_roster",JSON.stringify(data))}catch(e){}}
+function load(){try{var r=localStorage.getItem("rpp_roster");if(r){var d=JSON.parse(r);if(d&&d.people)return d}}catch(e){}return null}
+function migrate(d){if(!d||!d.people)return null;d.skills=d.skills||[];d.jobs=(d.jobs||[]).map(function(j){return{id:j.id||uid(),name:j.name||"",cls:j.cls||"",skillIds:j.skillIds||[],needIds:j.needIds||[],goodIds:j.goodIds||[]}});d.people=d.people.map(function(p){return{id:p.id||uid(),name:p.name||"",maxParties:(p.maxParties==null?null:p.maxParties),characters:(p.characters||[]).map(function(c){return{id:c.id||uid(),name:c.name||"",jobId:c.jobId==null?null:c.jobId,skillIds:c.skillIds||[],extraSkillIds:c.extraSkillIds||[],needIds:c.needIds||[],goodIds:c.goodIds||[],done:!!c.done,bosses:c.bosses||[],priority:(c.priority==null?3:c.priority)}})}});return d}
+function isEmptyDefault(d){if(!d)return true;var filled=(d.jobs||[]).some(function(j){return (j.skillIds&&j.skillIds.length)||(j.needIds&&j.needIds.length)||(j.goodIds&&j.goodIds.length)});return !filled && !((d.people||[]).length);}
+var DEFAULT_CSV="Done,Person,Character,Priority,Job,Skills,Boss Availability\n,Vape,MrVape,1,Dark Knight,\"HB, Dispel, MW40\",\"CQ, CWK, Empress, Magnus, Ravana, TOZ, World Tour\"\n,Vape,Vaporise,1,Buccaneer,SI,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Vape,Vaping,1,Shadower,,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Vape,DualVape,2,Dual Blade,TH,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Vape,VapeCui,2,Hero,,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Pigu,PiguXBow,1,Marksman,SE,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Pigu,PiguCui,2,Buccaneer,SI,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Loon,Sudidi,1,Bowmaster,SE,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Loon,Susi,2,Thunderbreaker,SI,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Loon,Suran,1,Aran,,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Loon,Supri,2,Bishop,\"Dispel, HS\",\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Loon,SuCui,1,Blaze Wizard,,\"CWK, Empress, Magnus, Ravana, TOZ, World Tour\"\n,Zeal,OliverQueenn,1,Marksman,SE,\"CQ, CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Zeal,Zeaii,1,Night Lord,,\"CQ, CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Zeal,Toothlesss,2,Dual Blade,TH,\"CWK, Empress, Magnus, Ravana, TOZ, World Tour\"\n,Zeal,MrHydee,2,Corsair,,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Zeal,zZeal,2,Aran,,\"CWK, TOZ\"\n,Lyn,Adrenalyn,2,Bishop,\"Dispel, HS, MW40\",\"CWK, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Lyn,Chishiya,2,Bowmaster,SE,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Lyn,Satire,2,Blaze Wizard,,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Lyn,Abbr,1,Dark Knight,\"HB, Dispel\",\"CWK, Empress, Magnus, Ravana, TOZ, World Tour\"\n,Lyn,Blvd,1,Buccaneer,\"SI, MW40\",\"CQ, CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Berry,Berryy,1,Dark Knight,\"HB, Dispel\",\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Berry,Sabby,1,Bowmaster,SE,\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Rol,Eleben,2,Bowmaster,SE,\"CQ, CWK, TOZ, World Tour\"\n,Rol,Yvaine,3,Night Lord,,\"CWK, Ravana, TOZ, World Tour\"\n,Rol,Metoot,1,Bowmaster,\"SE, MW40\",\"CWK, Empress, Ravana, TOZ, World Tour\"\n,Rol,Lexis,1,Night Walker,,\"CWK, Ravana, TOZ, World Tour\"\n,Rol,Distoot,1,Bishop,\"Dispel, HS, MW40\",\"CWK, Empress, Magnus, Ravana, TOZ, World Tour\"\n,Rol,Zody,1,Dual Blade,TH,\"CWK, Empress, Magnus, TOZ, World Tour\"\n,Rol,Datoot,1,Shadower,MW40,\"CWK, Magnus, TOZ, World Tour\"\n,Rol,Mitoot,2,Marksman,\"SE, MW40\",\"CWK, Magnus, Ravana, TOZ, World Tour\"\n,Rol,Eldon,2,Evan,,\"CWK, TOZ, World Tour\"\n,Rol,Yuvan,2,Corsair,,\"CWK, TOZ, World Tour\"\n,Raine,Ripples,1,Bowmaster,SE,\"CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,Raine,Revealing,1,Hero,,\"CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,Raine,Reignite,1,Thunderbreaker,SI,\"CWK, Empress, Magnus, Pink Bean, Ravana, World Tour\"\n,Raine,Rebuild,3,Mage FP,,\"CWK, Empress, Magnus, Pink Bean, Ravana, World Tour\"\n,Raine,Rebuff,1,Bishop,\"Dispel, HS\",\"CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,Raine,Reforge,1,Dawn Warrior,EC,\"CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,Raine,Reheat,1,Blaze Wizard,,\"CWK, Empress, Magnus, Pink Bean, Ravana, World Tour\"\n,rKev,Reaped,1,Wind Archer,SE,\"CQ, CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,rKev,Repel,1,Night Lord,,\"CQ, CWK, Empress, Magnus, Pink Bean, Ravana, World Tour\"\n,rKev,Reflex,1,Hero,,\"CQ, CWK, Empress, Magnus, Pink Bean, Ravana, World Tour\"\n,rKev,Revolve,1,Paladin,Threaten,\"CQ, CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,rKev,Revolution,1,Dual Blade,TH,\"CWK, Magnus, Pink Bean, Ravana, World Tour\"\n,rKev,Regimen,1,Dark Knight,\"HB, Dispel\",\"CWK, Empress, Ravana, World Tour\"\n,Thew,ThewC,1,Hero,,\"CQ, CWK, Empress, Magnus, Ravana, TOZ, World Tour\"\n,Thew,Thewxic,1,Dawn Warrior,EC,\"CWK, Empress, Magnus, Pink Bean, TOZ, World Tour\"\n,Thew,NotThew,1,Dark Knight,\"HB, Dispel\",\"CWK, Empress, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Thew,Thewie,3,Bishop,\"Dispel, HS\",\"CWK, Pink Bean, TOZ, World Tour\"\n,Thew,Ayumu,2,Buccaneer,SI,\"CWK, Pink Bean, TOZ, World Tour\"\n,Thew,Erena,2,Bowmaster,SE,\"CWK, Pink Bean, TOZ, World Tour\"\n,Thew,Hel,3,Aran,,\"CWK, TOZ, World Tour\"\n,Hong,Honkus,3,Dark Knight,\"HB, Dispel\",\"CWK, Empress, Magnus, TOZ, World Tour\"\n,Hong,Honkie,3,Thunderbreaker,SI,\"CWK, Empress, Magnus, TOZ, World Tour\"\n,Hong,Argonaut,3,Evan,,\"CWK, Empress, Magnus, TOZ, World Tour\"\n,Hong,xhonk,3,Paladin,Threaten,\"CQ, CWK, Magnus, Pink Bean, Ravana, TOZ, World Tour\"\n,Hong,Hongied,3,Dual Blade,TH,\"CWK, Empress, Magnus, Pink Bean, TOZ, World Tour\"";
+var _saved=migrate(load());
+if(_saved && !isEmptyDefault(_saved)){data=_saved;reindex();}else{data=seedData();reindex();try{importRosterKeepJobs(DEFAULT_CSV);}catch(e){}}
+
+/* ---------- helpers ---------- */
+function esc(s){return(s==null?"":String(s)).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+function names(ids){return(ids||[]).map(function(id){return skillById[id]?skillById[id].name:null}).filter(Boolean).join(", ")}
+function ensureSkills(nm){var ex={};data.skills.forEach(function(s){ex[s.name.toLowerCase()]=s.id});var ids=[];nm.forEach(function(n){var k=n.toLowerCase();var id=ex[k];if(!id){id=uid();ex[k]=id;data.skills.push({id:id,name:n})}if(ids.indexOf(id)<0)ids.push(id)});return ids}
+function chip(skill,active,small){var c=chipFor(skill.id);var on=active!==false;return '<span style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid '+(on?c[2]:"#334155")+';background:'+(on?c[1]:"#1e293b")+';color:'+(on?c[0]:"#64748b")+';padding:2px 10px;font-size:'+(small?"11":"12")+'px;font-weight:500">'+'<span style="width:6px;height:6px;border-radius:999px;background:'+(on?c[0]:"#475569")+'"></span>'+esc(skill.name)+'</span>'}
+
+/* ---------- download ---------- */
+function download(name,text,type){var blob=new Blob([text],{type:type||"text/plain"});var url=URL.createObjectURL(blob);var a=document.getElementById("dl");a.href=url;a.download=name;a.click();setTimeout(function(){URL.revokeObjectURL(url)},1000)}
+function exportCSV(){var rows=[["Done","Person","Character","Priority","Job","Skills","Boss Availability"]];data.people.forEach(function(p){p.characters.forEach(function(c){rows.push([c.done?"Yes":"",p.name||"",c.name||"",(c.priority||3),c.jobId&&jobById[c.jobId]?jobById[c.jobId].name:"",names(c.skillIds),(c.bosses||[]).slice().sort(function(x,y){return x.toLowerCase().localeCompare(y.toLowerCase())}).join(", ")])})});download("Player Database.csv",csvUnparse(rows),"text/csv")}
+function exportJobsCSV(){var rows=[["Job","Class","Skills","Needs","Good to have"]];data.jobs.forEach(function(j){rows.push([j.name||"",j.cls||"",names(j.skillIds),names(j.needIds),names(j.goodIds)])});download("job-rules.csv",csvUnparse(rows),"text/csv")}
+function importJobsCSV(text){var rows=csvParse(text||"");if(!rows.length)return false;var header=rows[0].map(function(h){return norm(h).toLowerCase()});var find=function(nn){return header.findIndex(function(h){return nn.indexOf(h)>=0})};var jC=find(["job","jobs","name"]),clC=find(["class","classes","category","branch"]),sC=find(["skills","skill","provides","grants"]),nC=find(["needs","need","requires","requirement","requirements"]),gC=find(["good to have","good","nice to have","nice","optional"]);var hasH=jC!==-1||sC!==-1||nC!==-1||gC!==-1||clC!==-1;if(!hasH){jC=0;clC=1;sC=2;nC=3;gC=4}else{if(jC===-1)jC=0;rows=rows.slice(1)}var toIds=function(v){var out=[];splitList(v).forEach(function(n){var id=ensureSkills([n])[0];if(out.indexOf(id)<0)out.push(id)});return out};var byName={};data.jobs.forEach(function(j){byName[j.name.toLowerCase()]=j});var added=0;rows.forEach(function(r){var name=norm(r[jC]);if(!name)return;var cls=clC!==-1&&clC<r.length?norm(r[clC]):"";var sids=toIds(sC!==-1&&sC<r.length?r[sC]:"");var nids=toIds(nC!==-1&&nC<r.length?r[nC]:"");var gids=toIds(gC!==-1&&gC<r.length?r[gC]:"");var j=byName[name.toLowerCase()];if(!j){j={id:uid(),name:name,cls:cls,skillIds:sids,needIds:nids,goodIds:gids};data.jobs.push(j);byName[name.toLowerCase()]=j;added++}else{j.cls=cls;j.skillIds=sids;j.needIds=nids;j.goodIds=gids}data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===j.id){c.skillIds=j.skillIds.slice();c.needIds=j.needIds.slice();c.goodIds=j.goodIds.slice()}})})});reindex();save();return true}
+function exportJSON(){download("roster.json",JSON.stringify(data,null,2),"application/json")}
+
+/* ---------- mutations ---------- */
+function commitSkillField(pid,cid,field,text){var c=getChar(data.people,pid,cid);if(!c)return;if(c.jobId){reindex();return}var ids=ensureSkills(splitList(text));c[field]=ids;reindex();save()}
+function assignJob(pid,cid,raw){var name=norm(raw);var c=getChar(data.people,pid,cid);if(!c)return;if(!name){c.jobId=null;reindex();save();return}var job=data.jobs.find(function(j){return j.name.toLowerCase()===name.toLowerCase()});if(!job){job={id:uid(),name:name,skillIds:c.skillIds.slice(),needIds:(c.needIds||[]).slice(),goodIds:(c.goodIds||[]).slice()};data.jobs.push(job)}c.jobId=job.id;c.skillIds=job.skillIds.slice();c.needIds=(job.needIds||[]).slice();c.goodIds=(job.goodIds||[]).slice();reindex();save()}
+function assignJobById(pid,cid,jid){var c=getChar(data.people,pid,cid);if(!c)return;if(!jid){c.jobId=null;reindex();save();return}var job=jobById[jid];if(!job){c.jobId=null;reindex();save();return}c.jobId=job.id;c.skillIds=(job.skillIds||[]).slice();c.needIds=(job.needIds||[]).slice();c.goodIds=(job.goodIds||[]).slice();reindex();save()}
+function jobOpts(sel){return '<option value="">— none —</option>'+data.jobs.map(function(j){return '<option value="'+j.id+'"'+(sel===j.id?' selected':'')+'>'+esc(j.name)+'</option>'}).join("")}
+function commitPerson(pid,cid,raw){var name=norm(raw);var moving=null;var src=data.people.find(function(p){return p.id===pid});if(src){moving=src.characters.find(function(c){return c.id===cid});src.characters=src.characters.filter(function(c){return c.id!==cid})}if(!moving)return;var target=name?data.people.find(function(p){return p.name.toLowerCase()===name.toLowerCase()&&p.id!==pid}):null;if(target)target.characters.push(moving);else data.people.push({id:uid(),name:name,characters:[moving]});data.people=data.people.filter(function(p){return p.characters.length>0});reindex();save()}
+function setPersonMax(pid,val){var p=data.people.find(function(x){return x.id===pid});if(!p)return;var cc=p.characters.length;var n=parseInt(val,10);if(val===""||isNaN(n)||n<1||cc<1){p.maxParties=null;save();return}var cap=Math.min(cc,st.count);p.maxParties=Math.max(1,Math.min(n,cap));save()}
+function addRow(){data.people.push({id:uid(),name:"",maxParties:null,characters:[{id:uid(),name:"",jobId:null,skillIds:[],extraSkillIds:[],needIds:[],goodIds:[],done:false,bosses:[],priority:3}]});save()}
+function delRow(pid,cid){var p=data.people.find(function(x){return x.id===pid});if(p)p.characters=p.characters.filter(function(c){return c.id!==cid});data.people=data.people.filter(function(x){return x.characters.length>0});reindex();save()}
+function allBosses(){var m={},out=[];data.people.forEach(function(p){p.characters.forEach(function(c){(c.bosses||[]).forEach(function(b){var k=b.toLowerCase();if(!m[k]){m[k]=1;out.push(b)}})})});return out.sort()}
+function bossAdd(pid,cid,name){name=(name||"").trim();if(!name)return;var c=getChar(data.people,pid,cid);if(!c)return;if(!c.bosses)c.bosses=[];if(c.bosses.map(function(x){return x.toLowerCase()}).indexOf(name.toLowerCase())<0)c.bosses.push(name);save()}
+function bossRemove(pid,cid,name){var c=getChar(data.people,pid,cid);if(!c)return;c.bosses=(c.bosses||[]).filter(function(x){return x.toLowerCase()!==name.toLowerCase()});save()}
+function bossCell(p,c){var list=allBosses();var have={};(c.bosses||[]).forEach(function(b){have[b.toLowerCase()]=1});var h='<td><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;border:1px solid #334155;background:#020617;border-radius:6px;padding:6px;min-width:180px;min-height:34px">';list.forEach(function(b){var on=have[b.toLowerCase()]?" checked":"";h+='<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#cbd5e1;cursor:pointer"><input type="checkbox" class="bosschk" data-p="'+p.id+'" data-c="'+c.id+'" data-boss="'+esc(b)+'"'+on+' style="width:14px;height:14px;accent-color:var(--amber);cursor:pointer"/>'+esc(b)+'</label>'});h+='<input class="bossadd" data-p="'+p.id+'" data-c="'+c.id+'" list="bosslist" placeholder="+ add boss" style="background:transparent;border:none;outline:none;color:#f1f5f9;font-size:12px;padding:2px;width:84px"/>';h+='</div></td>';return h}
+function setPriority(pid,cid,val){var c=getChar(data.people,pid,cid);if(!c)return;var n=parseInt(val,10);c.priority=(val===""||isNaN(n))?3:n;save()}
+function toggleDone(pid,cid){var c=getChar(data.people,pid,cid);if(c){c.done=!c.done;save()}}
+function addJobRow(){data.jobs.push({id:uid(),name:"",cls:"",skillIds:[],needIds:[],goodIds:[]});reindex();save()}
+function renameJob(jid,name){var j=jobById[jid];if(j){j.name=norm(name);reindex();save()}}
+function setJobClass(jid,val){var j=jobById[jid];if(j){j.cls=norm(val);save()}}
+function commitJobSkills(jid,text){var ids=ensureSkills(splitList(text));var j=jobById[jid];if(j){j.skillIds=ids;data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c.skillIds=ids.slice()})})}reindex();save()}
+function commitJobNeeds(jid,text){var ids=ensureSkills(splitList(text));var j=jobById[jid];if(j){j.needIds=ids;data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c.needIds=ids.slice()})})}reindex();save()}
+function commitJobGood(jid,text){var ids=ensureSkills(splitList(text));var j=jobById[jid];if(j){j.goodIds=ids;data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c.goodIds=ids.slice()})})}reindex();save()}
+function removeJob(jid){data.jobs=data.jobs.filter(function(j){return j.id!==jid});data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c.jobId=null})});st.requiredJobs=st.requiredJobs.filter(function(x){return x!==jid});reindex();save()}
+function renameSkill(sid,name){var s=(data.skills||[]).find(function(x){return x.id===sid});if(s){s.name=norm(name);save()}}
+function addSkillGlobal(){data.skills.push({id:uid(),name:""});reindex();save()}
+function removeSkillGlobal(sid){data.skills=data.skills.filter(function(s){return s.id!==sid});var strip=function(a){return (a||[]).filter(function(x){return x!==sid})};data.jobs.forEach(function(j){j.skillIds=strip(j.skillIds);j.needIds=strip(j.needIds);j.goodIds=strip(j.goodIds)});data.people.forEach(function(p){p.characters.forEach(function(c){c.skillIds=strip(c.skillIds);c.extraSkillIds=strip(c.extraSkillIds);c.needIds=strip(c.needIds);c.goodIds=strip(c.goodIds)})});st.required=strip(st.required);reindex();save()}
+function isLocked(idx,pid,cid){return (st.locks[idx]||[]).some(function(m){return m.personId===pid&&m.characterId===cid})}
+function toggleLock(idx,pid,cid){var arr=(st.locks[idx]||[]).slice();var i=arr.findIndex(function(m){return m.personId===pid&&m.characterId===cid});if(i>=0){arr.splice(i,1)}else{arr=arr.filter(function(m){return m.personId!==pid});arr.push({personId:pid,characterId:cid})}st.locks[idx]=arr}
+function applyRoster(d){data=d;reindex();st.locks={};st.completed={};st.benched=new Set();st.result=null;st.required=[];st.requiredJobs=[];save()}
+function importRosterKeepJobs(text){
+ var rows=csvParse(text||"");if(!rows.length)return false;
+ var header=rows[0].map(function(h){return norm(h).toLowerCase()});
+ var find=function(names){return header.findIndex(function(h){return names.indexOf(h)>=0})};
+ var dC=find(["done","completed","complete","cleared"]),pC=find(["person","player","owner","user","account"]),cC=find(["character","char","unit","hero","build"]),prC=find(["priority","prio","pri"]),jC=find(["job","jobs","class","classes","profession"]),sC=find(["skills","skill","provides"]),bC=find(["boss availability","bossavailability","bosses","boss","boss avail"]);
+ var hasHeader=pC!==-1||cC!==-1||jC!==-1||bC!==-1||dC!==-1||prC!==-1;
+ if(!hasHeader){dC=0;pC=1;cC=2;prC=3;jC=4;bC=5}else{rows=rows.slice(1)}
+ var byName={};data.jobs.forEach(function(j){byName[j.name.toLowerCase()]=j});
+ var truthy=function(v){v=norm(v).toLowerCase();return v==="yes"||v==="true"||v==="1"||v==="x"||v==="y"||v==="done"};
+ var pMap={},pOrder=[];
+ rows.forEach(function(r){
+  var person=pC!==-1&&pC<r.length?norm(r[pC]):"";if(!person)return;
+  var character=(cC!==-1&&cC<r.length?norm(r[cC]):"")||"Character";
+  var jobName=jC!==-1&&jC<r.length?norm(r[jC]):"";
+  var job=jobName?byName[jobName.toLowerCase()]:null;
+  var bosses=bC!==-1&&bC<r.length?splitList(r[bC]):[];
+  var done=dC!==-1&&dC<r.length?truthy(r[dC]):false;
+  var prio=prC!==-1&&prC<r.length?parseInt(norm(r[prC]),10):3;if(isNaN(prio)||prio<1)prio=3;
+  var extraIds=[];if(sC!==-1&&sC<r.length){splitList(r[sC]).forEach(function(n){var id=ensureSkills([n])[0];var js=job?(job.skillIds||[]):[];if(js.indexOf(id)<0&&extraIds.indexOf(id)<0)extraIds.push(id)})}
+  var ch={id:uid(),name:character,jobId:job?job.id:null,skillIds:job?(job.skillIds||[]).slice():[],extraSkillIds:extraIds,needIds:job?(job.needIds||[]).slice():[],goodIds:job?(job.goodIds||[]).slice():[],done:done,bosses:bosses,priority:prio};
+  if(!pMap[person]){pMap[person]={id:uid(),name:person,characters:[]};pOrder.push(person)}
+  pMap[person].characters.push(ch);
+ });
+ if(!pOrder.length)return false;
+ data.people=pOrder.map(function(n){return pMap[n]});
+ reindex();st.locks={};st.completed={};st.benched=new Set();st.results=null;st.required=[];st.requiredJobs=[];save();
+ return true;
+}
+function exportSkillsCSV(){var rows=[["Skill"]];data.skills.forEach(function(s){rows.push([s.name||""])});download("skills.csv",csvUnparse(rows),"text/csv")}
+function importSkillsCSV(text){var rows=csvParse(text||"");if(!rows.length)return false;var h0=norm(rows[0][0]).toLowerCase();var start=(h0==="skill"||h0==="skills"||h0==="name")?1:0;var ex={};data.skills.forEach(function(s){ex[s.name.toLowerCase()]=1});for(var i=start;i<rows.length;i++){var nm=norm(rows[i][0]);if(!nm)continue;if(!ex[nm.toLowerCase()]){data.skills.push({id:uid(),name:nm});ex[nm.toLowerCase()]=1}}reindex();save();return true}
+function applyJobs(parsed){var allNames=[];parsed.forEach(function(j){allNames=allNames.concat(j.skillNames,j.needNames||[])});ensureSkills(allNames);var map={};data.skills.forEach(function(s){map[s.name.toLowerCase()]=s.id});var resolve=function(arr){var o=[];(arr||[]).forEach(function(n){var id=map[n.toLowerCase()];if(id&&o.indexOf(id)<0)o.push(id)});return o};parsed.forEach(function(row){var sids=resolve(row.skillNames);var nids=resolve(row.needNames);var ex=data.jobs.find(function(j){return j.name.toLowerCase()===row.name.toLowerCase()});if(ex){ex.skillIds=sids;ex.needIds=nids}else data.jobs.push({id:uid(),name:row.name,skillIds:sids,needIds:nids})});reindex();save()}
+
+/* ---------- render ---------- */
+function header(){
+ var h='<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line);background:var(--panel);padding:14px 18px;border-radius:12px 12px 0 0">';
+ h+='<div style="display:flex;align-items:center;gap:12px"><div><div style="font-size:16px;font-weight:500;color:#f8fafc">Popcorn</div></div></div>';
+ h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+ h+='<button class="btn" data-a="exportJson">Export JSON</button><button class="btn" data-a="importJson">Import JSON</button><button class="btn" data-a="sample">Sample</button><button class="btn" data-a="clear">Clear</button>';
+ h+='</div></div>';
+ return h;
+}
+function tabs(){var h='<div style="display:flex;gap:4px;border-bottom:1px solid var(--line);background:var(--panel);padding:0 18px">';[["build","Pay Vape $10 Monthly"],["table","Player Database"],["job","Job Rules"]].forEach(function(t){var on=st.tab===t[0];h+='<button data-tab="'+t[0]+'" style="background:none;border:none;border-bottom:2px solid '+(on?"var(--amber)":"transparent")+';color:'+(on?"var(--amber2)":"var(--muted2)")+';padding:10px 8px;font-size:13px;font-weight:500">'+t[1]+'</button>'});return h+'</div>'}
+
+function buildParties(opts,count){var usedChars=new Set();var pcount={};var baseBench=opts.benched||new Set();var locks=opts.locks||{};var reserved=new Set();for(var k=0;k<count;k++){(locks[k]||[]).forEach(function(m){reserved.add(m.characterId)})}var out=[];for(var i=0;i<count;i++){var myLocks=(locks[i]||[]);var myPinned={};var lockedPersons={};myLocks.forEach(function(m){myPinned[m.personId]=m.characterId;lockedPersons[m.personId]=1});var capped=new Set(Array.from(baseBench));(opts.people||[]).forEach(function(p){if(lockedPersons[p.id])return;var mx=(p.maxParties==null?null:Math.min(p.maxParties,p.characters.length));if(mx==null||(pcount[p.id]||0)>=mx)capped.add(p.id)});var uc=new Set(Array.from(usedChars));reserved.forEach(function(cid){uc.add(cid)});myLocks.forEach(function(m){uc.delete(m.characterId)});var o=Object.assign({},opts,{usedChars:uc,benched:capped,pinned:myPinned});var res=buildParty(o);if(!res||!res.chosen.length)continue;if((res.missingRequired&&res.missingRequired.length)||(res.missingRequiredJobs&&res.missingRequiredJobs.length)||(res.missingRequiredClasses&&res.missingRequiredClasses.length))break;out.push(res);res.chosen.forEach(function(m){usedChars.add(m.characterId);pcount[m.personId]=(pcount[m.personId]||0)+1})}return out;}
+function addCharToParty(idx,name){name=(name||"").trim();if(!name||!st.results||!st.results[idx])return false;var found=null;data.people.forEach(function(p){if(p.maxParties==null)return;p.characters.forEach(function(c){if((c.name||"").toLowerCase()===name.toLowerCase())found={pid:p.id,cid:c.id}})});if(!found)return false;var res=st.results[idx];if(res.chosen.some(function(m){return m.characterId===found.cid}))return false;res.chosen=res.chosen.filter(function(m){return m.personId!==found.pid});res.chosen.push({personId:found.pid,characterId:found.cid});res.covered=new Set();res.chosen.forEach(function(m){var ch=getChar(data.people,m.personId,m.characterId);if(ch)ch.skillIds.forEach(function(sk){res.covered.add(sk)})});return true;}
+function buildTab(){
+ var bossOk=function(c){return!st.bossRun||(c.bosses||[]).some(function(x){return x.toLowerCase()===st.bossRun.toLowerCase()})};
+ var allBossesList=Array.from(new Set(data.people.reduce(function(a,p){return a.concat(p.characters.reduce(function(b,c){return b.concat(c.bosses||[])},[]))},[]))).sort();
+ if(!st.bossRun&&allBossesList.length){var _toz=null;allBossesList.forEach(function(b){if(b.toLowerCase()==="toz")_toz=b});st.bossRun=_toz||allBossesList[0];var _dsp=(data.skills.find(function(s){return (s.name||"").toLowerCase()==="dispel"})||{}).id;if(_dsp){var _di=st.required.indexOf(_dsp);if(st.bossRun&&st.bossRun.toLowerCase()==="toz"){if(_di<0)st.required.push(_dsp)}else if(_di>=0){st.required.splice(_di,1)}}}
+ var avail=data.people.filter(function(p){return p.maxParties!=null&&p.characters.some(bossOk)}).length;
+ var h='<div style="padding:16px;display:flex;flex-direction:column;gap:16px">';
+ h+='<div style="display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start">';
+ h+='<div class="card" style="order:1;border:1px solid var(--amber)"><div class="lbl" style="margin-bottom:8px;font-weight:700;color:#fff">Availability</div><div style="display:flex;flex-direction:column;gap:6px">';
+ if(!data.people.length)h+='<div class="hint" style="padding:4px 0">No people yet — add some in Player Database.</div>';
+ data.people.slice().sort(function(a,b){return (a.name||"Unnamed").toLowerCase().localeCompare((b.name||"Unnamed").toLowerCase())}).forEach(function(p){var sel=(p.maxParties!=null);h+='<div data-bench="'+p.id+'" title="'+(sel?"Click to Turn Off":"Click to Turn On")+'" style="cursor:pointer;display:flex;align-items:center;gap:8px;border:1px solid '+(sel?"#2dd4bf":"var(--line)")+';background:'+(sel?"#0e2b27":"var(--bg)")+';border-radius:8px;padding:8px 10px;opacity:'+(sel?"1":".55")+'"><span style="font-size:15px;color:'+(sel?"#2dd4bf":"var(--muted)")+'">'+(sel?"&#9673;":"&#9713;")+'</span><span onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:4px" title="Enter a number to include this person = max parties they can be in. Blank = not selected."><input class="maxparty" type="number" min="1" max="'+Math.max(1,Math.min(p.characters.length,st.count))+'" data-p="'+p.id+'" value="'+(p.maxParties==null?'':p.maxParties)+'" placeholder="off" style="width:60px;background:#020617;border:1px solid '+(sel?"#2dd4bf":"#475569")+';border-radius:6px;color:#f1f5f9;font-size:15px;font-weight:600;padding:6px 6px;text-align:center"/></span><span style="flex:1;font-size:13px;font-weight:500;color:#f1f5f9">'+esc(p.name||"Unnamed")+'</span><span class="mono" style="font-size:11px;color:var(--muted)">'+p.characters.length+' char</span></div>'});
+ h+='</div></div>';
+ h+='<div style="order:2;display:flex;flex-direction:column;gap:16px">';
+ h+='<div class="card" style="border:1px solid var(--amber)">';
+ h+='<div class="lbl" style="margin-bottom:10px;font-weight:700;color:#fff">Generate a party</div>';
+ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">';
+ h+='<div>';
+ h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';
+ h+='<div style="font-size:13px;color:#ffffff;font-weight:600;margin-bottom:6px">Boss Run</div>';
+ var bchip=function(val,label){var on=(st.bossRun===val);return '<span data-bosschip="'+esc(val)+'" style="cursor:pointer;display:inline-flex;align-items:center;border-radius:999px;border:1px solid '+(on?"#2dd4bf":"#334155")+';background:'+(on?"#0e2b27":"#1e293b")+';color:'+(on?"#ffffff":"#94a3b8")+';padding:3px 12px;font-size:12px;font-weight:500">'+esc(label)+'</span>';};
+ var _find=function(n){for(var i=0;i<allBossesList.length;i++){if(allBossesList[i].toLowerCase()===n.toLowerCase())return allBossesList[i]}return null};
+ var _used={};var _row1=[];["TOZ","Pink Bean","Ravana","Magnus"].forEach(function(n){var b=_find(n);if(b&&!_used[b.toLowerCase()]){_row1.push(b);_used[b.toLowerCase()]=1}});
+ var _row2=[];["CWK","CQ"].forEach(function(n){var b=_find(n);if(b&&!_used[b.toLowerCase()]){_row2.push(b);_used[b.toLowerCase()]=1}});
+ allBossesList.forEach(function(b){if(!_used[b.toLowerCase()]){_row2.push(b);_used[b.toLowerCase()]=1}});
+ h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">';_row1.forEach(function(bn){h+=bchip(bn,bn)});h+='</div>';
+ h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';_row2.forEach(function(bn){h+=bchip(bn,bn)});if(!allBossesList.length)h+='<span class="hint">Add Boss Availability in Player Database to filter by boss.</span>';h+='</div>';
+ h+='<div style="border-top:2px solid var(--amber);margin:6px 0 10px"></div>';
+ h+='<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#ffffff;font-weight:600;flex-wrap:wrap"><span>Character Priority</span>';[["1","1"],["2","2"],["3","3"],["none","Ignore"]].forEach(function(pr){h+='<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:500"><input type="checkbox" class="prioChk" data-p="'+pr[0]+'"'+(st.prio[pr[0]]!==false?" checked":"")+'/>'+pr[1]+'</label>'});h+='</div>';
+ h+='</div>';
+ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">';
+ h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';
+ h+='<div style="display:flex;justify-content:space-between;font-size:13px;color:#ffffff;font-weight:600;margin-bottom:4px"><span>Party Size</span><input id="sizenum" type="number" min="1" max="'+Math.max(1,data.people.length)+'" value="'+st.size+'" style="width:58px;background:#0e2b27;color:#ffffff;border:1px solid #2dd4bf;border-radius:4px;padding:1px 6px;font-weight:800;text-align:center;font-family:ui-monospace,monospace;font-size:12px"/></div>';
+ var _szmax=Math.max(1,data.people.length);var _szp=Math.round((Math.min(st.size,_szmax)-1)/Math.max(1,_szmax-1)*100);h+='<input id="size" type="range" min="1" max="'+_szmax+'" step="1" value="'+Math.min(st.size,_szmax)+'" style="width:100%;background:linear-gradient(to right,#0e2b27 0% '+_szp+'%,#1e293b '+_szp+'% 100%);border-image:linear-gradient(to right,#2dd4bf 0% '+_szp+'%,#334155 '+_szp+'% 100%) 1"/>';
+ h+='</div>';
+ var maxCount=10;
+ h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';
+ h+='<div style="display:flex;justify-content:space-between;font-size:13px;color:#ffffff;font-weight:600;margin-bottom:4px"><span>Parties to Generate</span><input id="countnum" type="number" min="1" max="'+maxCount+'" value="'+Math.min(st.count,maxCount)+'" style="width:58px;background:#0e2b27;color:#ffffff;border:1px solid #2dd4bf;border-radius:4px;padding:1px 6px;font-weight:800;text-align:center;font-family:ui-monospace,monospace;font-size:12px"/></div>';
+ var _cnp=Math.round((Math.min(st.count,maxCount)-1)/Math.max(1,maxCount-1)*100);h+='<input id="count" type="range" min="1" max="'+maxCount+'" step="1" value="'+Math.min(st.count,maxCount)+'" style="width:100%;background:linear-gradient(to right,#0e2b27 0% '+_cnp+'%,#1e293b '+_cnp+'% 100%);border-image:linear-gradient(to right,#2dd4bf 0% '+_cnp+'%,#334155 '+_cnp+'% 100%) 1"/>';
+ h+='</div>';
+ h+='</div>';
+ h+='</div>';
+ h+='<div style="border-left:2px solid var(--amber);padding-left:14px">';
+ h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';
+ h+='<div style="font-size:13px;color:#ffffff;font-weight:600;margin-bottom:6px">Goal</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+ [["required","Cover required skills"],["coverage","Max skill variety"]].forEach(function(m){var on=st.mode===m[0];h+='<button data-mode="'+m[0]+'" style="border-radius:8px;border:1px solid '+(on?"#2dd4bf":"var(--line2)")+';background:'+(on?"#0e2b27":"transparent")+';color:'+(on?"#ffffff":"#cbd5e1")+';padding:8px;font-size:12px;font-weight:500">'+m[1]+'</button>'});
+ h+='</div>';
+ h+='</div>';
+ var isCWK=(st.bossRun||"").toUpperCase()==="CWK";
+ var allClasses=Array.from(new Set(data.jobs.map(function(j){return j.cls}).filter(Boolean))).sort();
+ if(isCWK){
+  h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';h+='<div style="font-size:13px;color:#ffffff;font-weight:600;margin:0 0 6px">Required Class</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+  allClasses.forEach(function(cl){var on=st.requiredClasses.indexOf(cl)>=0;h+='<span data-reqclass="'+esc(cl)+'" style="cursor:pointer;display:inline-flex;align-items:center;border-radius:999px;border:1px solid '+(on?"#b45309":"#334155")+';background:'+(on?"#78350f":"#1e293b")+';color:'+(on?"#fcd34d":"#94a3b8")+';padding:3px 12px;font-size:12px;font-weight:500">'+esc(cl)+'</span>'});
+  if(!allClasses.length)h+='<span class="hint">Add a Class to jobs in Job Rules.</span>';
+  h+='</div>';h+='</div>';
+ } else {
+  if(st.mode==="required"){h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';h+='<div style="font-size:13px;color:#ffffff;font-weight:600;margin:0 0 6px">Required Skills (Optional)</div><div style="display:flex;flex-wrap:wrap;gap:6px">';var _cs=[],_cseen={};data.people.forEach(function(p){p.characters.forEach(function(c){(c.skillIds||[]).forEach(function(id){if(!_cseen[id]){_cseen[id]=1;_cs.push(id)}})})});_cs.sort(function(a,b){return ((skillById[a]||{}).name||"").toLowerCase().localeCompare(((skillById[b]||{}).name||"").toLowerCase())});_cs.forEach(function(id){var s=skillById[id];if(!s)return;h+='<span data-req="'+id+'" style="cursor:pointer">'+chip(s,st.required.indexOf(id)>=0,true)+'</span>'});if(!_cs.length)h+='<span class="hint">No character skills yet \u2014 assign jobs or add skills in Player Database.</span>';h+='</div>';h+='</div>'}
+  if(data.jobs.length){h+='<div style="background:#020617;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;margin-bottom:12px">';h+='<div style="font-size:13px;color:#ffffff;font-weight:600;margin:0 0 6px">Required Jobs (Optional)</div><div style="display:flex;flex-wrap:wrap;gap:6px">';data.jobs.forEach(function(j){var on=st.requiredJobs.indexOf(j.id)>=0;h+='<span data-reqjob="'+j.id+'" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;border-radius:999px;border:1px solid '+(on?"#b45309":"#334155")+';background:'+(on?"#78350f":"#1e293b")+';color:'+(on?"#fcd34d":"#64748b")+';padding:2px 10px;font-size:11px;font-weight:500">'+esc(j.name||"—")+'</span>'});h+='</div>';h+='</div>'}
+ }
+ h+='</div>';
+ h+='</div>';
+
+ h+='<button id="gen" style="margin-top:10px;width:100%;border:none;border-radius:8px;background:var(--amber);color:#0f172a;padding:10px;font-size:13px;font-weight:600;cursor:pointer">'+((st.results&&st.results.length)?"Regenerate":(st.count>1?"Generate parties":"Generate party"))+'</button>';
+ h+='</div>';
+ var _hasR=st.results&&st.results.length;h+='<div>';if(_hasR){h+='<div style="border:1px solid var(--amber);background:#020617;border-radius:14px;padding:14px"><div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start">';st.results.forEach(function(res,idx){var chosen=res.chosen.map(function(m){return{p:data.people.find(function(x){return x.id===m.personId}),c:getChar(data.people,m.personId,m.characterId)}}).filter(function(o){return o.p&&o.c}).sort(function(a,b){return (a.p.name||"").toLowerCase().localeCompare((b.p.name||"").toLowerCase())});
+  var unmet=chosen.filter(function(o){return(o.c.needIds||[]).some(function(s){return!res.covered.has(s)})}).length;
+  h+='<div class="card" style="'+(st.completed[idx]?"opacity:.6":"")+'">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:18px;font-weight:800;color:#f8fafc;letter-spacing:.01em">'+(st.results.length>1?("Party "+(idx+1)):"Your party")+'</span><span style="display:inline-flex;align-items:center;border-radius:999px;border:1px solid #b45309;background:#78350f;color:#fcd34d;padding:2px 9px;font-size:11px;font-weight:600">'+(st.resultsBoss?esc(st.resultsBoss):"All bosses")+'</span></span><span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end"><button data-doneparty="'+idx+'" style="border:1px solid '+(st.completed[idx]?"#047857":"#b45309")+';background:'+(st.completed[idx]?"#059669":"var(--amber)")+';color:'+(st.completed[idx]?"#ffffff":"#0f172a")+';border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">'+(st.completed[idx]?"&#10003; Completed":"Run Complete?")+'</button></span></div>';
+  h+='<input readonly value="'+esc(chosen.map(function(o){return o.c.name||o.p.name||""}).join(", "))+'" onclick="this.select()" title="Click to select, then copy" style="width:100%;background:#020617;border:1px solid #334155;border-radius:6px;color:#cbd5e1;font-size:12px;padding:6px 8px;margin-bottom:10px;font-family:ui-monospace,monospace"/>';
+  if(chosen.length<st.size)h+='<div style="border:1px solid var(--line2);background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--amber2);margin-bottom:10px">Only '+chosen.length+' of '+st.size+' slots filled — not enough available people.</div>';
+  if(unmet>0)h+='<div style="border:1px solid #9f1239;background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12px;color:#fda4af;margin-bottom:10px">&#9888; '+unmet+' member'+(unmet>1?'s':'')+' still missing needed skills \u2014 no available character can cover them within this party size.</div>';
+  if(st.mode==="required"&&res.missingRequired.length)h+='<div style="border:1px solid #9f1239;background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12px;color:#fda4af;margin-bottom:10px">Can\'t cover: '+res.missingRequired.map(function(id){return esc(skillById[id].name)}).join(", ")+'.</div>';
+  if(res.missingRequiredJobs&&res.missingRequiredJobs.length)h+='<div style="border:1px solid #9f1239;background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12px;color:#fda4af;margin-bottom:10px">Missing job(s): '+res.missingRequiredJobs.map(function(id){return esc(jobById[id]?jobById[id].name:"")}).join(", ")+'.</div>';
+  if(res.missingRequiredClasses&&res.missingRequiredClasses.length)h+='<div style="border:1px solid #9f1239;background:var(--bg);border-radius:8px;padding:8px 10px;font-size:12px;color:#fda4af;margin-bottom:10px">Missing class(es): '+res.missingRequiredClasses.map(function(c){return esc(c)}).join(", ")+'.</div>';
+  var _allLocked=chosen.length&&chosen.every(function(o){return isLocked(idx,o.p.id,o.c.id)});var _lockAllBtn='<button data-lockall="'+idx+'" style="border:1px solid '+(_allLocked?"#2dd4bf":"var(--line2)")+';background:'+(_allLocked?"#0e2b27":"transparent")+';color:'+(_allLocked?"#ffffff":"#94a3b8")+';border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap">'+(_allLocked?"Unlock All":"Lock All")+'</button>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;min-width:0"><thead><tr><th>Person</th><th>Character</th><th>Job</th><th>Skills</th><th style="text-align:center">'+_lockAllBtn+'</th></tr></thead><tbody>';
+  chosen.forEach(function(o){var p=o.p,c=o.c;var locked=isLocked(idx,p.id,c.id);
+   h+='<tr>';
+   h+='<td style="font-weight:500;color:#f1f5f9;white-space:nowrap">'+esc(p.name||"Unnamed")+'</td>';
+   h+='<td style="color:#cbd5e1;white-space:nowrap">'+esc(c.name)+'</td>';
+   h+='<td style="color:#fbbf24;white-space:nowrap">'+(c.jobId&&jobById[c.jobId]?esc(jobById[c.jobId].name):"—")+'</td>';
+   h+='<td><div style="display:flex;flex-wrap:wrap;gap:4px">';if(c.skillIds.length){c.skillIds.forEach(function(sid){if(skillById[sid])h+=chip(skillById[sid],true)})}else h+='<span style="color:#475569;font-size:12px">—</span>';h+='</div></td>';
+   h+='<td style="text-align:center;white-space:nowrap"><button data-lock="'+idx+'|'+p.id+'|'+c.id+'" style="border:1px solid '+(locked?"#2dd4bf":"var(--line2)")+';background:'+(locked?"#0e2b27":"transparent")+';color:'+(locked?"#ffffff":"#94a3b8")+';border-radius:6px;padding:2px 8px;font-size:11px">'+(locked?"Locked":"Lock")+'</button></td>';
+   h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div style="margin-top:8px;position:relative"><input class="addchar" data-idx="'+idx+'" autocomplete="off" placeholder="+ add character" style="width:100%;background:#020617;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:12px;padding:6px 8px"/><div class="charsug" data-idx="'+idx+'" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:30;background:#0b1220;border:1px solid #334155;border-radius:6px;margin-top:2px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.45)"></div></div>';
+  h+='</div>';
+ });h+='</div>'; var _placed=new Set();st.results.forEach(function(r){r.chosen.forEach(function(m){_placed.add(m.characterId)})}); var _pcnt={};st.results.forEach(function(r){var _sn={};r.chosen.forEach(function(m){if(!_sn[m.personId]){_sn[m.personId]=1;_pcnt[m.personId]=(_pcnt[m.personId]||0)+1}})}); var _anyOpen=st.results.some(function(r){return r.chosen.length<st.size});var _un=[];data.people.forEach(function(p){if(p.maxParties==null)return;var _el=p.characters.filter(function(c){return!c.done&&(st.prio.none===true||st.prio[(c.priority==null?3:c.priority)]!==false)&&(!st.resultsBoss||(c.bosses||[]).some(function(x){return x.toLowerCase()===st.resultsBoss.toLowerCase()}))});var _np=st.results.length;var _cap=Math.min(p.maxParties,_np);_el.forEach(function(c){if(!_placed.has(c.id)){var _r=((_pcnt[p.id]||0)>=_cap)?(p.maxParties<=_np?(esc(p.name)+' reached their max ('+p.maxParties+')'):('only '+_np+' part'+(_np>1?'ies':'y')+' generated')):(_anyOpen?'no party could cover their needed skills (needs rule)':'all party slots are full');_un.push({p:p,c:c,r:_r})}})}); if(_un.length){h+='<div style="margin-top:14px;border:1px solid #7c2d12;background:#1c1917;border-radius:10px;padding:10px 12px"><div style="font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#fdba74;margin-bottom:6px">Not placed ('+_un.length+')</div>';_un.forEach(function(u){h+='<div style="font-size:12px;color:#cbd5e1;margin-bottom:3px"><b style="color:#f1f5f9">'+esc(u.c.name)+'</b> <span style="color:var(--muted)">('+esc(u.p.name)+(u.c.jobId&&jobById[u.c.jobId]?", "+esc(jobById[u.c.jobId].name):"")+')</span> \u2014 '+u.r+'</div>'});h+='</div>';}h+='</div>';}h+='</div>';
+ h+='</div>';
+ h+='</div>';
+ h+='</div>';
+ return h;
+}
+function rosterTable(){
+ var rows=[];data.people.forEach(function(p){p.characters.forEach(function(c){rows.push({p:p,c:c})})});
+ var h='<div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><div class="lbl" style="font-weight:700;color:#fff">Player Database</div><div class="hint">Google Sheet for <a href="https://docs.google.com/spreadsheets/d/1kjWKo3kmy5aY9X9_Atd8bah2IKiMMonGLkMteakiNV0/edit?gid=0#gid=0" target="_blank" rel="noreferrer" style="color:var(--amber2);text-decoration:underline">Player Database</a></div></div><div style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn" data-a="exportCsv">Download CSV</button><button class="btn" data-a="importCsv">Upload CSV</button><button class="btn btn-amber" data-a="addRow">+ Add row</button></div></div>';
+ h+='<div style="overflow-x:auto"><table style="min-width:720px"><thead><tr><th style="width:44px;color:#fff">Done</th><th style="color:#fff">Person</th><th style="color:#fff">Character</th><th style="color:#fff">Priority</th><th style="color:#fff">Job</th><th style="color:#fff">Skills</th><th style="color:#fff">Boss Availability</th><th></th></tr></thead><tbody>';
+ if(!rows.length)h+='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No characters yet. Add a row to start.</td></tr>';
+ rows.forEach(function(r){var p=r.p,c=r.c;var ro=c.jobId?' readonly title="Set by the job — edit it in Job rules"':'';var rs=c.jobId?'opacity:.55;cursor:not-allowed':'';
+  h+='<tr style="'+(c.done?"opacity:.5":"")+'">';
+  h+='<td style="text-align:center;vertical-align:middle"><input type="checkbox" class="rcdone" data-p="'+p.id+'" data-c="'+c.id+'"'+(c.done?" checked":"")+' style="width:16px;height:16px;accent-color:var(--amber);cursor:pointer"/></td>';
+  h+='<td><input class="cell" data-act="person" data-p="'+p.id+'" data-c="'+c.id+'" value="'+esc(p.name)+'" placeholder="Person"/></td>';
+  h+='<td><input class="cell" data-act="char" data-p="'+p.id+'" data-c="'+c.id+'" value="'+esc(c.name)+'" placeholder="Character"/></td>';
+  h+='<td><select class="cell rcprio" data-p="'+p.id+'" data-c="'+c.id+'">'+[1,2,3].map(function(n){return '<option value="'+n+'"'+((c.priority||3)==n?" selected":"")+'>'+n+'</option>'}).join("")+'</select></td>';
+  h+='<td><select class="cell rcjob" data-p="'+p.id+'" data-c="'+c.id+'">'+jobOpts(c.jobId)+'</select></td>';
+  h+=skillsCell(p,c);
+  h+=bossCell(p,c);
+  h+='<td style="text-align:center"><button data-del="'+p.id+'|'+c.id+'" style="background:none;border:none;color:var(--muted);font-size:16px" title="Delete">&times;</button></td>';
+  h+='</tr>';
+ });
+ h+='</tbody></table></div><div class="hint" style="margin-top:10px">'+data.people.length+' people · '+rows.length+' characters · '+data.jobs.length+' jobs · '+data.skills.length+' skills</div></div>';
+ return h;
+}
+function pickCell(j,field){
+ var ids=j[field]||[];var h='<td><div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1px solid #334155;background:#020617;border-radius:6px;padding:5px 6px;min-height:34px">';
+ ids.forEach(function(sid){var s=skillById[sid];if(!s)return;var cc=chipFor(sid);h+='<span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;border:1px solid '+cc[2]+';background:'+cc[1]+';color:'+cc[0]+';padding:2px 8px;font-size:12px">'+esc(s.name)+'<span data-pickrem="'+j.id+'|'+field+'|'+sid+'" style="cursor:pointer;color:#94a3b8;font-size:13px">&times;</span></span>'});
+ h+='<input class="pickadd" data-j="'+j.id+'" data-field="'+field+'" list="skilllist" placeholder="+ add" style="background:transparent;border:none;outline:none;color:#f1f5f9;font-size:12px;padding:2px;width:70px"/>';
+ h+='</div></td>';return h;
+}
+function jobFieldAddName(jid,field,name){name=(name||"").trim();if(!name)return;var sid=ensureSkills([name])[0];var j=jobById[jid];if(!j)return;j[field]=j[field]||[];if(j[field].indexOf(sid)<0)j[field].push(sid);data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c[field]=j[field].slice()})});reindex();save()}
+function jobFieldRemove(jid,field,sid){var j=jobById[jid];if(!j)return;j[field]=(j[field]||[]).filter(function(x){return x!==sid});data.people.forEach(function(p){p.characters.forEach(function(c){if(c.jobId===jid)c[field]=j[field].slice()})});reindex();save()}
+function jobsTable(){
+ var h='<div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><div class="lbl" style="font-weight:700;color:#fff">Job rules</div><div class="hint">Google Sheet for <a href="https://docs.google.com/spreadsheets/d/1kjWKo3kmy5aY9X9_Atd8bah2IKiMMonGLkMteakiNV0/edit?gid=1654045364#gid=1654045364" target="_blank" rel="noreferrer" style="color:var(--amber2);text-decoration:underline">Job Rules</a></div></div><div style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn" data-a="exportJobsCsv">Download CSV</button><button class="btn" data-a="importJobsCsv">Upload CSV</button><button class="btn btn-amber" data-a="addJob">+ Add job</button></div></div>';
+ h+='<div style="overflow-x:auto"><table style="min-width:820px"><thead><tr><th>Job</th><th>Class</th><th>Skills</th><th>Needs</th><th>Good to have</th><th></th></tr></thead><tbody>';
+ if(!data.jobs.length)h+='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;font-size:13px">No jobs yet. Add a job to define its skills.</td></tr>';
+ data.jobs.forEach(function(j){
+  h+='<tr><td><input class="cell" data-jact="name" data-j="'+j.id+'" value="'+esc(j.name)+'" placeholder=""/></td>';
+  h+='<td><input class="cell" data-jact="cls" data-j="'+j.id+'" list="classlist" value="'+esc(j.cls||"")+'" placeholder=""/></td>';
+  h+=pickCell(j,"skillIds");
+  h+=pickCell(j,"needIds");
+  h+=pickCell(j,"goodIds");
+  h+='<td style="text-align:center"><button data-deljob="'+j.id+'" style="background:none;border:none;color:var(--muted);font-size:16px" title="Delete">&times;</button></td></tr>';
+ });
+ h+='</tbody></table></div></div>';
+ return h;
+}
+function skillsTable(){
+ var h='<div class="card"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><div class="lbl">Skills</div><div class="hint">Rename a skill to update it everywhere it is used (Skills, Needs, Good to have). Delete removes it from all jobs.</div></div><div style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn" data-a="exportSkillsCsv">Download CSV</button><button class="btn" data-a="importSkillsCsv">Upload CSV</button><button class="btn btn-amber" data-a="addSkill">+ Add skill</button></div></div>';
+ h+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+ data.skills.forEach(function(s){var c=chipFor(s.id);var w=Math.max(46,esc(s.name).length*8+14);h+='<div style="display:inline-flex;align-items:center;gap:5px;border:1px solid '+c[2]+';background:'+c[1]+';border-radius:8px;padding:3px 7px"><span style="width:8px;height:8px;border-radius:999px;background:'+c[0]+'"></span><input class="skname" data-s="'+s.id+'" value="'+esc(s.name)+'" placeholder="skill" style="background:transparent;border:none;outline:none;color:'+c[0]+';font-size:12px;width:'+w+'px"/><span data-skdel="'+s.id+'" style="cursor:pointer;color:#94a3b8;font-size:14px" title="Delete">&times;</span></div>'});
+ if(!data.skills.length)h+='<div class="hint">No skills yet. Add one here or via the Job rules pickers.</div>';
+ h+='</div></div>';
+ return h;
+}
+function tableTab(){return '<div style="padding:16px">'+rosterTable()+'</div>'}
+function jobsTab(){return '<div style="padding:16px"><div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start"><div>'+jobsTable()+'</div><div>'+skillsTable()+'</div></div></div>'}
+
+function render(){
+ var jl='<datalist id="joblist">'+data.jobs.map(function(j){return '<option value="'+esc(j.name)+'"></option>'}).join("")+'</datalist>';
+ jl+='<datalist id="skilllist">'+data.skills.map(function(s){return '<option value="'+esc(s.name)+'"></option>'}).join("")+'</datalist>';
+ jl+='<datalist id="classlist"><option value="Warrior"></option><option value="Magician"></option><option value="Bowman"></option><option value="Thief"></option><option value="Pirate"></option></datalist>';
+ jl+='<datalist id="bosslist">'+allBosses().map(function(b){return '<option value="'+esc(b)+'"></option>'}).join("")+'</datalist>';
+ root.innerHTML='<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:16px 0">'+jl+header()+tabs()+(st.tab==="table"?tableTab():st.tab==="job"?jobsTab():buildTab())+'</div>';
+ wire();
+}
+
+function wire(){
+ qsa("[data-tab]").forEach(function(b){b.onclick=function(){st.tab=b.getAttribute("data-tab");render()}});
+ qsa("[data-a]").forEach(function(b){b.onclick=function(){act(b.getAttribute("data-a"))}});
+ var sz=byId("size");if(sz)sz.oninput=function(e){st.size=+e.target.value;render()};
+ var szn=byId("sizenum");if(szn)szn.onchange=function(e){st.size=Math.max(1,Math.min(parseInt(e.target.value,10)||1,Math.max(1,data.people.length)));render()};
+ qsa("[data-bosschip]").forEach(function(b){b.onclick=function(){var v=b.getAttribute("data-bosschip");st.bossRun=(st.bossRun===v?"":v);var _dsp=(data.skills.find(function(s){return (s.name||"").toLowerCase()==="dispel"})||{}).id;if(_dsp){var _di=st.required.indexOf(_dsp);if(st.bossRun&&st.bossRun.toLowerCase()==="toz"){if(_di<0)st.required.push(_dsp)}else if(_di>=0){st.required.splice(_di,1)}}render()}});
+ var doGen=function(){var _selP={};data.people.forEach(function(p){if(p.maxParties!=null)_selP[p.id]=1});Object.keys(st.locks).forEach(function(k){st.locks[k]=(st.locks[k]||[]).filter(function(m){return _selP[m.personId]})});var _ignore=st.prio.none===true;var _po=function(c){return _ignore||st.prio[(c.priority==null?3:c.priority)]!==false};var _bo=function(c){return!st.bossRun||(c.bosses||[]).some(function(x){return x.toLowerCase()===st.bossRun.toLowerCase()})};var gp=data.people.map(function(p){return{id:p.id,name:p.name,maxParties:p.maxParties,characters:p.characters.filter(function(c){return _bo(c)&&_po(c)})}}).filter(function(p){return p.characters.length});var isCWK=(st.bossRun||"").toUpperCase()==="CWK";st.results=buildParties({people:gp,size:st.size,mode:st.mode,requiredIds:isCWK?[]:st.required,requiredJobIds:isCWK?[]:st.requiredJobs,requiredClasses:isCWK?st.requiredClasses:[],ignorePrio:_ignore,locks:st.locks,benched:st.benched},Math.max(1,st.count));st.resultsBoss=st.bossRun;render()};
+ var gen=byId("gen");if(gen)gen.onclick=doGen;
+ var regen=byId("regen");if(regen)regen.onclick=doGen;
+ var cnt=byId("count");if(cnt)cnt.oninput=function(e){var v=Math.max(1,+e.target.value);st.count=v;data.people.forEach(function(p){if(p.maxParties!=null)setPersonMax(p.id,v)});render()};
+ qsa("input.prioChk").forEach(function(cb){cb.onchange=function(){var k=cb.getAttribute("data-p");if(k==="none"){st.prio=cb.checked?{1:false,2:false,3:false,none:true}:{1:true,2:true,3:true,none:false};}else{st.prio[k]=cb.checked;st.prio.none=false;}render()}});
+ var cntn=byId("countnum");if(cntn)cntn.onchange=function(e){var v=Math.max(1,Math.min(parseInt(e.target.value,10)||1,10));st.count=v;data.people.forEach(function(p){if(p.maxParties!=null)setPersonMax(p.id,v)});render()};
+ qsa("[data-mode]").forEach(function(b){b.onclick=function(){st.mode=b.getAttribute("data-mode");render()}});
+ qsa("[data-req]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-req");var i=st.required.indexOf(id);if(i>=0)st.required.splice(i,1);else st.required.push(id);render()}});
+ qsa("[data-reqjob]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-reqjob");var i=st.requiredJobs.indexOf(id);if(i>=0)st.requiredJobs.splice(i,1);else st.requiredJobs.push(id);render()}});
+ qsa("[data-reqclass]").forEach(function(b){b.onclick=function(){var v=b.getAttribute("data-reqclass");var i=st.requiredClasses.indexOf(v);if(i>=0)st.requiredClasses.splice(i,1);else st.requiredClasses.push(v);render()}});
+ qsa("[data-bench]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-bench");var p=data.people.find(function(x){return x.id===id});if(p){if(p.maxParties==null)setPersonMax(id,st.count);else setPersonMax(id,"");render()}}});
+ qsa("input.maxparty").forEach(function(inp){inp.onclick=function(e){e.stopPropagation()};inp.onchange=function(){setPersonMax(inp.getAttribute("data-p"),inp.value);render()};inp.onkeydown=function(e){if(e.key==="Enter")inp.blur()}});
+ qsa("[data-lock]").forEach(function(b){b.onclick=function(){var parts=b.getAttribute("data-lock").split("|");toggleLock(+parts[0],parts[1],parts[2]);render()}});
+ qsa("[data-lockall]").forEach(function(b){b.onclick=function(){var i=+b.getAttribute("data-lockall");var res=st.results&&st.results[i];if(!res)return;var all=res.chosen.length&&res.chosen.every(function(m){return isLocked(i,m.personId,m.characterId)});st.locks[i]=all?[]:res.chosen.map(function(m){return{personId:m.personId,characterId:m.characterId}});render()}});
+ qsa("[data-doneparty]").forEach(function(b){b.onclick=function(){var i=+b.getAttribute("data-doneparty");if(st.results&&st.results[i]){var now=!st.completed[i];st.completed[i]=now;if(now){st.locks[i]=st.results[i].chosen.map(function(m){return{personId:m.personId,characterId:m.characterId}})}else{st.locks[i]=[]}render()}}});
+ qsa("input.addchar").forEach(function(inp){var idx=+inp.getAttribute("data-idx");var box=null;qsa(".charsug").forEach(function(b){if(+b.getAttribute("data-idx")===idx)box=b});var commit=function(){if((inp.value||"").trim()){if(addCharToParty(idx,inp.value)){inp.value="";render()}}};var build=function(){if(!box)return;var q=(inp.value||"").trim().toLowerCase();var used={};if(st.results&&st.results[idx])st.results[idx].chosen.forEach(function(m){used[m.characterId]=1});var rows=[];data.people.forEach(function(p){if(p.maxParties==null)return;p.characters.forEach(function(c){if(!c.name||used[c.id])return;var jn=(c.jobId&&jobById[c.jobId])?jobById[c.jobId].name:"";if(q&&((c.name+" "+(p.name||"")+" "+jn).toLowerCase().indexOf(q)<0))return;rows.push('<div class="charsugrow" data-name="'+esc(c.name)+'" style="padding:6px 8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #1e293b"><div><div style="font-size:13px;color:#f1f5f9;font-weight:600">'+esc(c.name)+'</div><div style="font-size:11px;color:#94a3b8">'+esc(jn)+'</div></div><div style="font-size:12px;color:#cbd5e1;white-space:nowrap">'+esc(p.name||"")+'</div></div>')})});if(rows.length){box.innerHTML=rows.join("");box.style.display="block"}else{box.style.display="none"}};inp.oninput=build;inp.onfocus=build;inp.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();commit()}else if(e.key==="Escape"){if(box)box.style.display="none"}};inp.onblur=function(){setTimeout(function(){if(box)box.style.display="none";if(document.contains&&document.contains(inp))commit()},200)};if(box){box.onmousedown=function(e){var t=e.target;while(t&&t!==box&&!(t.getAttribute&&t.getAttribute("data-name")))t=t.parentNode;if(t&&t!==box){e.preventDefault();var nm=t.getAttribute("data-name");if(addCharToParty(idx,nm))render()}}}});
+ qsa("input.rcdone").forEach(function(cb){cb.onchange=function(){toggleDone(cb.getAttribute("data-p"),cb.getAttribute("data-c"));render()}});
+ qsa("select.rcjob").forEach(function(sel){sel.onchange=function(){assignJobById(sel.getAttribute("data-p"),sel.getAttribute("data-c"),sel.value);render()}});
+ qsa("select.rcprio").forEach(function(sel){sel.onchange=function(){setPriority(sel.getAttribute("data-p"),sel.getAttribute("data-c"),sel.value);render()}});
+ qsa("input[data-act]").forEach(function(inp){var act=inp.getAttribute("data-act"),pid=inp.getAttribute("data-p"),cid=inp.getAttribute("data-c");inp.onblur=function(){var v=inp.value;if(act==="person")commitPerson(pid,cid,v);else if(act==="char"){var c=getChar(data.people,pid,cid);if(c)c.name=v;save()}else if(act==="job")assignJob(pid,cid,v);else if(act==="skills")commitSkillField(pid,cid,"skillIds",v);else if(act==="needs")commitSkillField(pid,cid,"needIds",v);render()};inp.onkeydown=function(e){if(e.key==="Enter")inp.blur()}});
+ qsa("input.pickadd").forEach(function(inp){inp.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();jobFieldAddName(inp.getAttribute("data-j"),inp.getAttribute("data-field"),inp.value);render()}};inp.onblur=function(){if((inp.value||"").trim()){jobFieldAddName(inp.getAttribute("data-j"),inp.getAttribute("data-field"),inp.value);render()}}});
+ qsa("[data-pickrem]").forEach(function(b){b.onclick=function(){var pr=b.getAttribute("data-pickrem").split("|");jobFieldRemove(pr[0],pr[1],pr[2]);render()}});
+ qsa("input.cskilladd").forEach(function(inp){inp.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();addCharSkill(inp.getAttribute("data-p"),inp.getAttribute("data-c"),inp.value);render()}};inp.onblur=function(){if((inp.value||"").trim()){addCharSkill(inp.getAttribute("data-p"),inp.getAttribute("data-c"),inp.value);render()}}});
+ qsa("[data-cskillrem]").forEach(function(b){b.onclick=function(){var pr=b.getAttribute("data-cskillrem").split("|");removeCharSkill(pr[0],pr[1],pr[2]);render()}});
+ qsa("input[data-jact]").forEach(function(inp){var a=inp.getAttribute("data-jact"),jid=inp.getAttribute("data-j");inp.onblur=function(){if(a==="name")renameJob(jid,inp.value);else if(a==="cls")setJobClass(jid,inp.value);else if(a==="needs")commitJobNeeds(jid,inp.value);else if(a==="good")commitJobGood(jid,inp.value);else commitJobSkills(jid,inp.value);render()};inp.onkeydown=function(e){if(e.key==="Enter")inp.blur()}});
+ qsa("input.bossadd").forEach(function(inp){var pid=inp.getAttribute("data-p"),cid=inp.getAttribute("data-c");var addit=function(){if((inp.value||"").trim()){bossAdd(pid,cid,inp.value);render()}};inp.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();addit()}};inp.onblur=addit});
+ qsa("input.bosschk").forEach(function(cb){cb.onchange=function(){var pid=cb.getAttribute("data-p"),cid=cb.getAttribute("data-c"),b=cb.getAttribute("data-boss");if(cb.checked)bossAdd(pid,cid,b);else bossRemove(pid,cid,b);render()}});
+ qsa("[data-bossrem]").forEach(function(b){b.onclick=function(){var pr=b.getAttribute("data-bossrem").split("|");bossRemove(pr[0],pr[1],pr[2]);render()}});
+ qsa("[data-del]").forEach(function(b){b.onclick=function(){var parts=b.getAttribute("data-del").split("|");delRow(parts[0],parts[1]);render()}});
+ qsa("[data-deljob]").forEach(function(b){b.onclick=function(){removeJob(b.getAttribute("data-deljob"));render()}});
+ qsa("input.skname").forEach(function(inp){inp.onblur=function(){renameSkill(inp.getAttribute("data-s"),inp.value);render()};inp.onkeydown=function(e){if(e.key==="Enter")inp.blur()}});
+ qsa("[data-skdel]").forEach(function(b){b.onclick=function(){removeSkillGlobal(b.getAttribute("data-skdel"));render()}});
+}
+function act(a){
+ if(a==="exportCsv")exportCSV();
+ else if(a==="exportJson")exportJSON();
+ else if(a==="importCsv")byId("fileCsv").click();
+ else if(a==="importJson")byId("fileJson").click();
+ else if(a==="addRow"){addRow();render()}
+ else if(a==="addJob"){addJobRow();render()}
+ else if(a==="addSkill"){addSkillGlobal();render()}
+ else if(a==="exportSkillsCsv")exportSkillsCSV();
+ else if(a==="importSkillsCsv")byId("fileSkillsCsv").click();
+ else if(a==="exportJobsCsv")exportJobsCSV();
+ else if(a==="importJobsCsv")byId("fileJobsCsv").click();
+ else if(a==="sample"){if(confirm("Reset to the sample roster? This clears your current data.")){applyRoster(seedData());render()}}
+ else if(a==="clear"){if(confirm("Remove all people, jobs, and skills?")){applyRoster({skills:[],people:[],jobs:[]});render()}}
+}
+function byId(x){return document.getElementById(x)}
+function qsa(s){return Array.prototype.slice.call(root.querySelectorAll(s))}
+
+byId("fileCsv").onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){if(!importRosterKeepJobs(rd.result)){alert("Couldn't read any rows. Check for Person and Character columns (Job optional).");return}render()};rd.readAsText(f);e.target.value=""};
+byId("fileJobsCsv").onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){if(!importJobsCSV(rd.result)){alert("Couldn't read any jobs. Use a Job column (Class, Skills, Needs, Good to have optional).");return}render()};rd.readAsText(f);e.target.value=""};
+byId("fileSkillsCsv").onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){if(!importSkillsCSV(rd.result)){alert("Couldn't read any skills. Use a single Skill column.");return}render()};rd.readAsText(f);e.target.value=""};
+byId("fileJson").onchange=function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{var d=migrate(JSON.parse(rd.result));if(d&&d.people){applyRoster(d);render()}else alert("That file doesn't look like a roster export.")}catch(err){alert("Couldn't read that file.")}};rd.readAsText(f);e.target.value=""};
+
+render();
+})();
+</script>
+</body>
+</html>
