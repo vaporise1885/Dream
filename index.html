@@ -292,9 +292,9 @@ function farmCostTab(){
  h+='<button data-a="syncFarmCost" style="background:#0e2b27;border:1px solid #2dd4bf;border-radius:8px;color:#fff;font-weight:700;padding:8px 16px;cursor:pointer">Sync from Google Sheet</button>';
  h+='</div>';
  if(!data.farmItems.length){return h+'<div style="color:var(--muted2);font-size:13px">No items yet. Click <b>Sync from Google Sheet</b> to load them.</div></div>';}
- h+='<table class="rowlines" style="width:100%;border-collapse:collapse"><thead><tr><th style="'+thL+'">Item</th><th style="'+thR+'">Value (mesos)</th></tr></thead><tbody>';
- data.farmItems.forEach(function(it){h+='<tr><td style="padding:6px 8px">'+esc(it.name||"")+'</td><td style="padding:6px 8px;text-align:right">'+fmtN(it.value||0)+'</td></tr>';});
- h+='</tbody></table></div>';return h;
+ var mkTable=function(items){var t='<table class="rowlines" style="width:100%;border-collapse:collapse"><thead><tr><th style="'+thL+'">Item</th><th style="'+thR+'">Value (mesos)</th></tr></thead><tbody>';items.forEach(function(it){t+='<tr><td style="padding:6px 8px">'+esc(it.name||"")+'</td><td style="padding:6px 8px;text-align:right">'+fmtN(it.value||0)+'</td></tr>';});return t+'</tbody></table>';};
+ var half=Math.ceil(data.farmItems.length/2);var left=data.farmItems.slice(0,half),right=data.farmItems.slice(half);
+ h+='<div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:220px">'+mkTable(left)+'</div><div style="flex:1;min-width:220px">'+(right.length?mkTable(right):"")+'</div></div></div>';return h;
 }
 function farmInputTab(){return '<div style="padding:40px 18px;color:var(--muted2);font-size:14px">Farming Input \u2014 coming soon.</div>';}
 function farmCalcTab(){
