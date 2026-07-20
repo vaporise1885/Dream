@@ -275,6 +275,60 @@ function header(){
  h+='</div>';
  return h;
 }
+function groupTabs(){var gs=[["generator","Generator"],["farming","Farming"]];var cur=st.group||"generator";var h='<div style="display:flex;gap:6px;background:var(--panel);padding:10px 18px 0">';gs.forEach(function(g){var on=cur===g[0];h+='<button data-group="'+g[0]+'" style="background:'+(on?"#0e2b27":"transparent")+';border:1px solid '+(on?"var(--amber)":"var(--line)")+';border-radius:8px 8px 0 0;color:'+(on?"var(--amber2)":"var(--muted2)")+';padding:8px 18px;font-size:13px;font-weight:700">'+g[1]+'</button>'});return h+'</div>';}
+function farmTabs(){var h='<div style="display:flex;gap:4px;border-bottom:1px solid var(--line);background:var(--panel);padding:0 18px">';[["farm","Farming Input"],["calc","Calculator"],["log","Record Logs"],["cost","Cost"]].forEach(function(t){var on=(st.ftab||"farm")===t[0];h+='<button data-ftab="'+t[0]+'" style="background:none;border:none;border-bottom:2px solid '+(on?"var(--amber)":"transparent")+';color:'+(on?"var(--amber2)":"var(--muted2)")+';padding:10px 8px;font-size:13px;font-weight:500">'+t[1]+'</button>'});return h+'</div>';}
+function fmtN(n){n=Math.round(+n||0);return n.toLocaleString("en-US");}
+function fFind(id){var a=data.farmItems||[];for(var i=0;i<a.length;i++){if(a[i].id===id)return a[i];}return null;}
+function nowStamp(){var d=new Date();var p=function(n){return("0"+n).slice(-2)};return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());}
+function parseMesos(v){v=norm(v).toLowerCase().replace(/,/g,"").replace(/mesos?/g,"").trim();var m=1;if(/b$/.test(v)){m=1e9;v=v.slice(0,-1);}else if(/m$/.test(v)){m=1e6;v=v.slice(0,-1);}else if(/k$/.test(v)){m=1e3;v=v.slice(0,-1);}var n=parseFloat(v);return isNaN(n)?0:Math.round(n*m);}
+function importFarmCostCSV(text){var rows=csvParse(text||"");if(!rows.length)return false;var header=rows[0].map(function(h){return norm(h).toLowerCase()});var find=function(nn){return header.findIndex(function(h){return nn.indexOf(h)>=0})};var nameC=find(["item","item name","name","product"]);var valC=find(["value (mesos)","value","price","cost","mesos","meso","avg price","average price"]);var hasH=nameC!==-1||valC!==-1;if(!hasH){nameC=0;valC=1;}else{if(nameC===-1)nameC=0;if(valC===-1)valC=1;rows=rows.slice(1);}var prev={};(data.farmItems||[]).forEach(function(it){prev[(it.name||"").toLowerCase()]=it;});var out=[];rows.forEach(function(r){var nm=norm(r[nameC]);if(!nm)return;var val=parseMesos(r[valC]);var ex=prev[nm.toLowerCase()];out.push({id:ex?ex.id:uid(),name:nm,value:val});});if(!out.length)return false;data.farmItems=out;return true;}
+function syncFarmCost(){var url="https://docs.google.com/spreadsheets/d/e/2PACX-1vR8E2hJO9qNn486cLa_NQW5xZ6F3a6PieE61rN8eYK5nUUXxdr5z8dXQanOw3wuN9NWTiDP2nXvcc3e/pub?gid=993493484&single=true&output=csv";var btn=null;qsa('[data-a="syncFarmCost"]').forEach(function(b){btn=b});var reset=function(){if(btn){btn.textContent="Sync from Google Sheet";btn.style.opacity="1";}};if(btn){btn.textContent="Syncing\u2026";btn.style.opacity=".6";}fetch(url).then(function(r){if(!r.ok)throw new Error("http");return r.text()}).then(function(t){var ok=importFarmCostCSV(t);if(ok){data.farmCostUpdated=nowStamp();save();render();}else{reset();alert("Synced, but couldn\u2019t read any item rows. Make sure the Cost sheet has an Item column and a Value column.");}}).catch(function(){reset();alert("Sync failed. Make sure the sheet is published to the web.");});}
+function farmCostTab(){
+ data.farmItems=data.farmItems||[];
+ var thL="text-align:left;padding:8px;color:#fff;font-weight:700";var thR="text-align:right;padding:8px;color:#fff;font-weight:700";
+ var h='<div style="padding:16px 18px">';
+ h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px">';
+ h+='<div style="color:var(--muted2);font-size:12px">Google Sheet for <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vR8E2hJO9qNn486cLa_NQW5xZ6F3a6PieE61rN8eYK5nUUXxdr5z8dXQanOw3wuN9NWTiDP2nXvcc3e/pub?gid=993493484&single=true&output=csv" target="_blank" rel="noopener" style="color:#2dd4bf;font-weight:700">Farming Cost</a>'+(data.farmCostUpdated?'<br>Last updated: <b style="color:#cbd5e1">'+esc(data.farmCostUpdated)+'</b>':'')+'</div>';
+ h+='<button data-a="syncFarmCost" style="background:#0e2b27;border:1px solid #2dd4bf;border-radius:8px;color:#fff;font-weight:700;padding:8px 16px;cursor:pointer">Sync from Google Sheet</button>';
+ h+='</div>';
+ if(!data.farmItems.length){return h+'<div style="color:var(--muted2);font-size:13px">No items yet. Click <b>Sync from Google Sheet</b> to load them.</div></div>';}
+ h+='<table class="rowlines" style="width:100%;border-collapse:collapse"><thead><tr><th style="'+thL+'">Item</th><th style="'+thR+'">Value (mesos)</th></tr></thead><tbody>';
+ data.farmItems.forEach(function(it){h+='<tr><td style="padding:6px 8px">'+esc(it.name||"")+'</td><td style="padding:6px 8px;text-align:right">'+fmtN(it.value||0)+'</td></tr>';});
+ h+='</tbody></table></div>';return h;
+}
+function farmInputTab(){return '<div style="padding:40px 18px;color:var(--muted2);font-size:14px">Farming Input \u2014 coming soon.</div>';}
+function farmCalcTab(){
+ data.farmItems=data.farmItems||[];data.farmSession=data.farmSession||{};
+ var earn=0,cost=0,rows="";
+ data.farmItems.forEach(function(it){
+  var se=data.farmSession[it.id]||{};var b=+se.before||0,a=+se.after||0;var val=+it.value||0;var d=a-b;var amt=d*val;
+  if(amt>=0)earn+=amt;else cost+=(-amt);
+  if(b||a){rows+='<tr><td style="padding:6px 8px">'+esc(it.name||"")+'</td><td style="padding:6px 8px;text-align:right">'+(d>=0?"+":"")+fmtN(d)+'</td><td style="padding:6px 8px;text-align:right">'+fmtN(val)+'</td><td style="padding:6px 8px;text-align:right;color:'+(amt>=0?"#4ade80":"#f87171")+'">'+(amt<0?"-":"")+fmtN(Math.abs(amt))+'</td></tr>';}
+ });
+ var net=earn-cost;
+ var h='<div style="padding:16px 18px">';
+ if(!rows){return h+'<div style="color:var(--muted2);font-size:13px">Enter Before/After values in <b>Farming Input</b> to see your session profit.</div></div>';}
+ h+='<table class="rowlines" style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px">Item</th><th style="text-align:right;padding:8px">Change</th><th style="text-align:right;padding:8px">Value</th><th style="text-align:right;padding:8px">Subtotal</th></tr></thead><tbody>'+rows+'</tbody></table>';
+ h+='<div style="margin-top:16px;margin-left:auto;max-width:340px;display:flex;flex-direction:column;gap:6px;font-size:14px">';
+ h+='<div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Earnings</span><span style="color:#4ade80;font-weight:600">'+fmtN(earn)+'</span></div>';
+ h+='<div style="display:flex;justify-content:space-between"><span style="color:var(--muted2)">Costs</span><span style="color:#f87171;font-weight:600">-'+fmtN(cost)+'</span></div>';
+ h+='<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:6px"><span style="font-weight:700">Net profit</span><span style="font-weight:800;color:'+(net>=0?"#4ade80":"#f87171")+'">'+fmtN(net)+' mesos</span></div></div>';
+ h+='<div style="margin-top:16px;display:flex;gap:10px;align-items:center"><input data-fc-note placeholder="Session note (optional)" style="background:#0e2b27;border:1px solid #2dd4bf;border-radius:6px;color:#fff;font-weight:600;padding:6px 8px;flex:1"><button data-fa="saveSession" style="background:#0e2b27;border:1px solid #2dd4bf;border-radius:8px;color:#fff;font-weight:700;padding:8px 16px;cursor:pointer">Save session to log</button></div>';
+ h+='</div>';return h;
+}
+function farmLogTab(){
+ data.farmLogs=data.farmLogs||[];
+ var h='<div style="padding:16px 18px">';
+ if(!data.farmLogs.length){return h+'<div style="color:var(--muted2);font-size:13px">No sessions saved yet. Save one from the <b>Calculator</b> tab.</div></div>';}
+ h+='<table class="rowlines" style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:8px">Date</th><th style="text-align:left;padding:8px">Note</th><th style="text-align:right;padding:8px">Earnings</th><th style="text-align:right;padding:8px">Costs</th><th style="text-align:right;padding:8px">Net</th><th style="padding:8px"></th></tr></thead><tbody>';
+ var tot=0;
+ data.farmLogs.forEach(function(lg){tot+=(+lg.net||0);
+  h+='<tr><td style="padding:6px 8px">'+esc(lg.date||"")+'</td><td style="padding:6px 8px;color:var(--muted2)">'+esc(lg.note||"")+'</td><td style="padding:6px 8px;text-align:right;color:#4ade80">'+fmtN(lg.earnings||0)+'</td><td style="padding:6px 8px;text-align:right;color:#f87171">'+fmtN(lg.costs||0)+'</td><td style="padding:6px 8px;text-align:right;font-weight:700;color:'+((+lg.net||0)>=0?"#4ade80":"#f87171")+'">'+fmtN(lg.net||0)+'</td><td style="padding:6px 8px;text-align:center"><button data-fl-del="'+lg.id+'" style="background:none;border:1px solid var(--line);border-radius:6px;color:#f87171;padding:4px 10px;cursor:pointer">✕</button></td></tr>';
+ });
+ h+='</tbody><tfoot><tr><td colspan="4" style="padding:8px;text-align:right;font-weight:700">Total net</td><td style="padding:8px;text-align:right;font-weight:800;color:'+(tot>=0?"#4ade80":"#f87171")+'">'+fmtN(tot)+'</td><td></td></tr></tfoot></table></div>';
+ return h;
+}
+function farmingTab(){var ft=st.ftab||"farm";var body=ft==="calc"?farmCalcTab():ft==="log"?farmLogTab():ft==="cost"?farmCostTab():farmInputTab();return farmTabs()+body;}
 function tabs(){var h='<div style="display:flex;gap:4px;border-bottom:1px solid var(--line);background:var(--panel);padding:0 18px">';[["build","Party Generator"],["table","Player Database"],["job","Job Rules"]].forEach(function(t){var on=st.tab===t[0];h+='<button data-tab="'+t[0]+'" style="background:none;border:none;border-bottom:2px solid '+(on?"var(--amber)":"transparent")+';color:'+(on?"var(--amber2)":"var(--muted2)")+';padding:10px 8px;font-size:13px;font-weight:500">'+t[1]+'</button>'});return h+'</div>'}
 
 function buildParties(opts,count){var usedChars=new Set();var pcount={};var baseBench=opts.benched||new Set();var locks=opts.locks||{};var reserved=new Set();for(var k=0;k<count;k++){(locks[k]||[]).forEach(function(m){reserved.add(m.characterId)})}var out=[];for(var i=0;i<count;i++){var myLocks=(locks[i]||[]);var myPinned={};var lockedPersons={};myLocks.forEach(function(m){myPinned[m.personId]=m.characterId;lockedPersons[m.personId]=1});var capped=new Set(Array.from(baseBench));(opts.people||[]).forEach(function(p){if(lockedPersons[p.id])return;var mx=(p.maxParties==null?null:Math.min(p.maxParties,p.characters.length));if(mx==null||(pcount[p.id]||0)>=mx)capped.add(p.id)});var uc=new Set(Array.from(usedChars));reserved.forEach(function(cid){uc.add(cid)});myLocks.forEach(function(m){uc.delete(m.characterId)});var o=Object.assign({},opts,{usedChars:uc,benched:capped,pinned:myPinned});var res=buildParty(o);if(!res||!res.chosen.length)continue;if((res.missingRequired&&res.missingRequired.length)||(res.missingRequiredJobs&&res.missingRequiredJobs.length)||(res.missingRequiredClasses&&res.missingRequiredClasses.length))break;out.push(res);res.chosen.forEach(function(m){usedChars.add(m.characterId);pcount[m.personId]=(pcount[m.personId]||0)+1})}return out;}
@@ -429,12 +483,17 @@ function render(){
  jl+='<datalist id="skilllist">'+data.skills.map(function(s){return '<option value="'+esc(s.name)+'"></option>'}).join("")+'</datalist>';
  jl+='<datalist id="classlist"><option value="Warrior"></option><option value="Magician"></option><option value="Bowman"></option><option value="Thief"></option><option value="Pirate"></option></datalist>';
  jl+='<datalist id="bosslist">'+allBosses().map(function(b){return '<option value="'+esc(b)+'"></option>'}).join("")+'</datalist>';
- root.innerHTML='<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:16px 0">'+jl+header()+tabs()+(st.tab==="table"?tableTab():st.tab==="job"?jobsTab():buildTab())+'</div>';
+ root.innerHTML='<div style="display:flex;justify-content:flex-end;margin:16px 0 8px"><button data-a="syncFarmCost" style="background:#0e2b27;border:1px solid #2dd4bf;border-radius:8px;color:#fff;font-weight:700;padding:8px 16px;cursor:pointer">Sync from Google Sheet</button></div>'+'<div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0 0 16px">'+jl+header()+groupTabs()+((st.group||"generator")==="farming"?farmingTab():tabs()+(st.tab==="table"?tableTab():st.tab==="job"?jobsTab():buildTab()))+'</div>';
  wire();
 }
 
 function wire(){
  qsa("[data-tab]").forEach(function(b){b.onclick=function(){st.tab=b.getAttribute("data-tab");render()}});
+ qsa("[data-group]").forEach(function(b){b.onclick=function(){st.group=b.getAttribute("data-group");if(st.group==="generator"&&!st.tab)st.tab="build";render()}});
+ qsa("[data-ftab]").forEach(function(b){b.onclick=function(){st.ftab=b.getAttribute("data-ftab");render()}});
+ qsa("[data-fs-before],[data-fs-after]").forEach(function(i){i.onchange=function(){var isB=i.hasAttribute("data-fs-before");var id=i.getAttribute(isB?"data-fs-before":"data-fs-after");data.farmSession=data.farmSession||{};var se=data.farmSession[id]||(data.farmSession[id]={before:0,after:0});se[isB?"before":"after"]=+i.value||0;save();var row=i.closest?i.closest("tr"):null;if(row){var cells=row.querySelectorAll("td");var ch=(+se.after||0)-(+se.before||0);var c=cells[cells.length-1];if(c){c.textContent=(ch>0?"+":"")+ch.toLocaleString("en-US");c.style.color=ch>0?"#4ade80":ch<0?"#f87171":"#94a3b8";}}}});
+ qsa('[data-fa="saveSession"]').forEach(function(btn){btn.onclick=function(){data.farmItems=data.farmItems||[];data.farmSession=data.farmSession||{};data.farmLogs=data.farmLogs||[];var earn=0,cost=0,rows=[];data.farmItems.forEach(function(it){var se=data.farmSession[it.id]||{};var b=+se.before||0,a=+se.after||0;var val=+it.value||0;var d=a-b;var amt=d*val;if(amt>=0)earn+=amt;else cost+=(-amt);if(b||a)rows.push({name:it.name,qty:d,value:val,amt:amt});});if(!rows.length)return;var ne=document.querySelector("[data-fc-note]");var note=ne?ne.value:"";var d=new Date();var ds=d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);data.farmLogs.unshift({id:uid(),date:ds,note:note,earnings:earn,costs:cost,net:earn-cost,rows:rows});data.farmSession={};save();st.ftab="log";render();}});
+ qsa("[data-fl-del]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-fl-del");data.farmLogs=(data.farmLogs||[]).filter(function(x){return x.id!==id});save();render();}});
  qsa("[data-a]").forEach(function(b){b.onclick=function(){act(b.getAttribute("data-a"))}});
  var sz=byId("size");if(sz)sz.oninput=function(e){st.size=+e.target.value;render()};
  var szn=byId("sizenum");if(szn)szn.onchange=function(e){st.size=Math.max(1,Math.min(parseInt(e.target.value,10)||1,Math.max(1,data.people.length)));render()};
@@ -475,6 +534,7 @@ function wire(){
 function act(a){
  if(a==="exportCsv")exportCSV();
  else if(a==="syncSheet")syncFromSheet();
+ else if(a==="syncFarmCost")syncFarmCost();
  else if(a==="exportJson")exportJSON();
  else if(a==="importCsv")byId("fileCsv").click();
  else if(a==="importJson")byId("fileJson").click();
